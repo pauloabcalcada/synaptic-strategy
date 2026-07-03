@@ -32,6 +32,9 @@ CLAUDE.md
 # Prototype
 prototype/
 
+# Generated seed PDFs
+backend/app/seed/output/
+
 # CLaude
 .claude/
 .agents/
