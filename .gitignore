@@ -27,6 +27,7 @@ build/
 # Internal docs
 SETUP.md
 synaptic-strategy-handoff.md
+CLAUDE.md
 
 # Prototype
 prototype/
