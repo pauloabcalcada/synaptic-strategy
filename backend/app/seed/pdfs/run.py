@@ -16,6 +16,7 @@ from app.seed.generate_results import generate_results_for_indicator
 from app.seed.pdfs.benchmark_report import generate_benchmark_report
 from app.seed.pdfs.manual import generate_manual
 from app.seed.pdfs.meeting_minutes import generate_meeting_minutes
+from app.seed.pdfs.narrative import build_narrative
 from app.seed.pdfs.strategic_review import generate_strategic_review
 
 RECENT_MONTHS = 12  # of the 24 seeded months (indices 12-23 => calendar year 2024)
@@ -74,37 +75,23 @@ def _format_result(value: float, unit: str) -> str:
     return f"{value:,.1f}"
 
 
-def _status_narrative(area_name: str, off_track: list[dict], at_risk: list[dict]) -> tuple[list[str], list[str], list[str], list[str]]:
-    if off_track:
-        names = ", ".join(r["name"] for r in off_track)
-        discussion = [f"{names} came in off track this month; root causes were reviewed."]
-        decisions = [f"Escalate remediation for {names} to the {area_name} leadership team."]
-        action_items = [f"Owner to present a recovery plan for {names} at next month's review."]
-    elif at_risk:
-        names = ", ".join(r["name"] for r in at_risk)
-        discussion = [f"{names} is trending at risk; contributing factors were discussed."]
-        decisions = [f"Monitor {names} closely and revisit mitigation options next month."]
-        action_items = [f"Owner to report back on {names} trend at next review."]
-    else:
-        discussion = ["All reviewed indicators are on track this month."]
-        decisions = ["Maintain current execution plan."]
-        action_items = ["No new action items; continue monitoring."]
-    next_steps = [f"Reconvene next month to review {area_name} KPI progress."]
-    return discussion, decisions, action_items, next_steps
-
-
 def _period_label(period: date) -> str:
     return period.strftime("%Y-%m")
 
 
-def _build_results_by_area_period() -> dict[tuple[str, date], list[dict]]:
+def _build_results_by_area_period() -> tuple[
+    dict[tuple[str, date], list[dict]], dict[tuple[str, date], dict[str, str]]
+]:
     by_area_period: dict[tuple[str, date], list[dict]] = {}
+    previous_by_area_period: dict[tuple[str, date], dict[str, str]] = {}
+
     for indicator in INDICATORS:
         generated = generate_results_for_indicator(
             indicator["code"], indicator["target"], indicator["polarity"], indicator["kpi_type"]
         )
-        recent = generated[-RECENT_MONTHS:]
-        for entry in recent:
+        offset = len(generated) - RECENT_MONTHS
+        for i in range(offset, len(generated)):
+            entry = generated[i]
             key = (indicator["area_key"], entry["period"])
             by_area_period.setdefault(key, []).append(
                 {
@@ -112,11 +99,17 @@ def _build_results_by_area_period() -> dict[tuple[str, date], list[dict]]:
                     "name": indicator["name"],
                     "result": _format_result(entry["result"], indicator["unit"]),
                     "target": _format_result(entry["target"], indicator["unit"]),
+                    "result_raw": entry["result"],
+                    "target_raw": entry["target"],
                     "status": entry["status"],
-                    "status_raw": entry["status"],
                 }
             )
-    return by_area_period
+            if i > 0:
+                previous_by_area_period.setdefault(key, {})[indicator["code"]] = _format_result(
+                    generated[i - 1]["result"], indicator["unit"]
+                )
+
+    return by_area_period, previous_by_area_period
 
 
 def generate_all_pdfs(output_dir: Path) -> list[Path]:
@@ -129,7 +122,7 @@ def generate_all_pdfs(output_dir: Path) -> list[Path]:
         generate_benchmark_report(BENCHMARKS, output_dir / "kpi-benchmark-report-2024.pdf"),
     ]
 
-    results_by_area_period = _build_results_by_area_period()
+    results_by_area_period, previous_by_area_period = _build_results_by_area_period()
 
     for area in AREAS:
         area_key = area["key"]
@@ -137,10 +130,8 @@ def generate_all_pdfs(output_dir: Path) -> list[Path]:
         periods = sorted({period for (a_key, period) in results_by_area_period if a_key == area_key})
         for period in periods:
             indicator_results = results_by_area_period[(area_key, period)]
-            off_track = [r for r in indicator_results if r["status_raw"] == "off_track"]
-            at_risk = [r for r in indicator_results if r["status_raw"] == "at_risk"]
-            discussion, decisions, action_items, next_steps = _status_narrative(
-                area_name, off_track, at_risk
+            narrative = build_narrative(
+                area_name, indicator_results, previous_by_area_period.get((area_key, period))
             )
 
             minutes = {
@@ -148,10 +139,10 @@ def generate_all_pdfs(output_dir: Path) -> list[Path]:
                 "period": period,
                 "attendees": ATTENDEES_BY_AREA[area_key],
                 "indicator_results": indicator_results,
-                "discussion_highlights": discussion,
-                "decisions": decisions,
-                "action_items": action_items,
-                "next_steps": next_steps,
+                "discussion_highlights": narrative["discussion_highlights"],
+                "decisions": narrative["decisions"],
+                "action_items": narrative["action_items"],
+                "next_steps": narrative["next_steps"],
                 "cross_area_reference": CROSS_AREA_REFERENCES.get((area_key, period)),
             }
 
