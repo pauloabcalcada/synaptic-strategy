@@ -27,3 +27,12 @@ build/
 # Internal docs
 SETUP.md
 synaptic-strategy-handoff.md
+
+# Prototype
+prototype/
+
+# CLaude
+.claude/
+.agents/
+skills-lock.json
+
