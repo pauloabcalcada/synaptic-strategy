@@ -1,7 +1,7 @@
 import uuid
 
 from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Text, func
-from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -34,6 +34,7 @@ class Indicator(Base):
         UUID(as_uuid=True), ForeignKey("areas.id")
     )
     active: Mapped[bool | None] = mapped_column(Boolean, server_default="true", nullable=True)
+    related_kpis: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[object] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=True
     )
