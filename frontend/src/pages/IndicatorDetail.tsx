@@ -6,9 +6,11 @@ import { z } from "zod";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { useIndicator } from "@/hooks/useIndicator";
 import { useCommentary } from "@/hooks/useCommentary";
+import { useDiagnostic } from "@/hooks/useDiagnostic";
 import { useRoleStore } from "@/store/role-store";
 import { Button } from "@/components/ui/button";
 import { InfoButton } from "@/components/ui/info-button";
+import { AIPanel } from "@/components/ui/ai-panel";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -34,6 +36,8 @@ export function IndicatorDetail() {
     data: commentary,
     save: saveCommentary,
   } = useCommentary(code, commentaryPeriod);
+  const { data: diagnostic } = useDiagnostic(code, commentaryPeriod);
+  const [diagnosticExpanded, setDiagnosticExpanded] = useState(false);
 
   const form = useForm<CommentaryFormValues>({
     resolver: zodResolver(commentaryFormSchema),
@@ -160,6 +164,35 @@ export function IndicatorDetail() {
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      {diagnostic && (
+        <AIPanel>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between text-left text-sm font-medium"
+            aria-expanded={diagnosticExpanded}
+            onClick={() => setDiagnosticExpanded((expanded) => !expanded)}
+          >
+            <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-semibold text-primary">
+              AI Diagnostic Available
+            </span>
+          </button>
+          {diagnosticExpanded && (
+            <div className="mt-3 flex flex-col gap-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Pattern</span>
+                <span className="font-medium">{diagnostic.pattern}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Confidence</span>
+                <span className="font-medium">{diagnostic.confidence}</span>
+              </div>
+              <p>{diagnostic.description}</p>
+              <p className="text-muted-foreground">{diagnostic.suggested_focus}</p>
+            </div>
+          )}
+        </AIPanel>
+      )}
 
       <form
         className="flex flex-col gap-2"
