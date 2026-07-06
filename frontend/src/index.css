@@ -145,3 +145,13 @@ body {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 3px;
 }
+
+@keyframes ai-panel-glow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
