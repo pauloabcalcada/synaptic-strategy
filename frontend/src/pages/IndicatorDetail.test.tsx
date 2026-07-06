@@ -1,11 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { IndicatorDetail } from './IndicatorDetail'
 import { useIndicator } from '@/hooks/useIndicator'
+import { useCommentary } from '@/hooks/useCommentary'
+import { useRoleStore } from '@/store/role-store'
 
 vi.mock('@/hooks/useIndicator')
+vi.mock('@/hooks/useCommentary')
 const mockedUseIndicator = vi.mocked(useIndicator)
+const mockedUseCommentary = vi.mocked(useCommentary)
 
 const INDICATOR_DATA = {
   name: 'Operating Cost Ratio',
@@ -35,8 +40,23 @@ function renderPage(code = 'FIN_OCR') {
   )
 }
 
+const EMPTY_COMMENTARY = {
+  period: '2024-12-01',
+  content: null,
+  is_ai_generated: false,
+  author_id: null,
+}
+
 beforeEach(() => {
   mockedUseIndicator.mockReset()
+  mockedUseCommentary.mockReset()
+  mockedUseCommentary.mockReturnValue({
+    data: EMPTY_COMMENTARY,
+    loading: false,
+    error: null,
+    save: vi.fn().mockResolvedValue(undefined),
+  })
+  useRoleStore.setState({ role: 'manager', areaId: null })
 })
 
 describe('IndicatorDetail', () => {
@@ -74,5 +94,70 @@ describe('IndicatorDetail', () => {
     expect(screen.getByText(INDICATOR_DATA.composition)).toBeInTheDocument()
     expect(screen.getByText('82.5')).toBeInTheDocument()
     expect(screen.getByText('on_track')).toBeInTheDocument()
+  })
+
+  it('shows the recorded commentary for the viewed period in an editable field', () => {
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+    mockedUseCommentary.mockReturnValue({
+      data: { ...EMPTY_COMMENTARY, content: 'Margin dipped due to one-off vendor costs.' },
+      loading: false,
+      error: null,
+      save: vi.fn().mockResolvedValue(undefined),
+    })
+
+    renderPage()
+
+    expect(screen.getByRole('textbox', { name: /commentary/i })).toHaveValue(
+      'Margin dipped due to one-off vendor costs.'
+    )
+  })
+
+  it('saves the commentary and reflects the update after refetch', async () => {
+    const user = userEvent.setup()
+    const mockSave = vi.fn().mockResolvedValue(undefined)
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+    mockedUseCommentary.mockReturnValue({
+      data: EMPTY_COMMENTARY,
+      loading: false,
+      error: null,
+      save: mockSave,
+    })
+
+    renderPage()
+
+    const textbox = screen.getByRole('textbox', { name: /commentary/i })
+    await user.type(textbox, 'Revised note.')
+    await user.click(screen.getByRole('button', { name: /save commentary/i }))
+
+    await waitFor(() =>
+      expect(mockSave).toHaveBeenCalledWith('Revised note.', 'manager')
+    )
+
+    mockedUseCommentary.mockReturnValue({
+      data: { ...EMPTY_COMMENTARY, content: 'Revised note.' },
+      loading: false,
+      error: null,
+      save: mockSave,
+    })
+    renderPage()
+
+    expect(screen.getByRole('textbox', { name: /commentary/i })).toHaveValue('Revised note.')
+  })
+
+  it('shows the commentary for a different period after navigating periods', async () => {
+    const user = userEvent.setup()
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+    mockedUseCommentary.mockReturnValue({
+      data: { ...EMPTY_COMMENTARY, content: 'December note.' },
+      loading: false,
+      error: null,
+      save: vi.fn().mockResolvedValue(undefined),
+    })
+
+    renderPage()
+
+    await user.selectOptions(screen.getByLabelText(/period/i), '2024-11-01')
+
+    expect(mockedUseIndicator).toHaveBeenLastCalledWith('FIN_OCR', '2024-11-01')
   })
 })

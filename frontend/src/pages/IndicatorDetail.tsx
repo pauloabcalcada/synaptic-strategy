@@ -1,6 +1,13 @@
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { useIndicator } from "@/hooks/useIndicator";
+import { useCommentary } from "@/hooks/useCommentary";
+import { useRoleStore } from "@/store/role-store";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -9,10 +16,32 @@ const STATUS_STYLES: Record<string, string> = {
   off_track: "text-destructive",
 };
 
+const commentaryFormSchema = z.object({
+  content: z.string(),
+});
+
+type CommentaryFormValues = z.infer<typeof commentaryFormSchema>;
+
 export function IndicatorDetail() {
   const [searchParams] = useSearchParams();
   const code = searchParams.get("code") ?? "";
-  const { data, loading, error } = useIndicator(code);
+  const role = useRoleStore((state) => state.role);
+  const [period, setPeriod] = useState<string | undefined>(undefined);
+  const { data, loading, error } = useIndicator(code, period);
+  const commentaryPeriod = data?.period;
+  const {
+    data: commentary,
+    save: saveCommentary,
+  } = useCommentary(code, commentaryPeriod);
+
+  const form = useForm<CommentaryFormValues>({
+    resolver: zodResolver(commentaryFormSchema),
+    values: { content: commentary?.content ?? "" },
+  });
+
+  async function onSubmitCommentary(values: CommentaryFormValues) {
+    await saveCommentary(values.content, role ?? "");
+  }
 
   if (loading) {
     return <div className="text-muted-foreground">Loading indicator…</div>;
@@ -28,9 +57,25 @@ export function IndicatorDetail() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">{data.name}</h1>
-        <p className="text-sm text-muted-foreground">{data.code}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">{data.name}</h1>
+          <p className="text-sm text-muted-foreground">{data.code}</p>
+        </div>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-muted-foreground">Period</span>
+          <select
+            className="rounded-lg border border-border bg-background px-2 py-1"
+            value={data.period}
+            onChange={(event) => setPeriod(event.target.value)}
+          >
+            {data.history.map((entry) => (
+              <option key={entry.period} value={entry.period}>
+                {entry.period}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <dl className="grid grid-cols-2 gap-4 text-sm">
@@ -101,6 +146,23 @@ export function IndicatorDetail() {
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={form.handleSubmit(onSubmitCommentary)}
+      >
+        <label htmlFor="commentary-content" className="text-sm text-muted-foreground">
+          Commentary
+        </label>
+        <textarea
+          id="commentary-content"
+          className="min-h-24 rounded-lg border border-border bg-background p-2 text-sm"
+          {...form.register("content")}
+        />
+        <Button type="submit" className="self-start" disabled={form.formState.isSubmitting}>
+          Save commentary
+        </Button>
+      </form>
     </div>
   );
 }
