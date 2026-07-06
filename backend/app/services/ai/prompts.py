@@ -19,3 +19,24 @@ persistent. State your confidence as one of: high, medium, low. Respond with a \
 JSON object: {{"pattern": ..., "confidence": ..., "description": ..., \
 "suggested_focus": ...}}.
 """
+
+ACTION_PLAN_PROMPT_V1 = """\
+You are an analyst embedded in a strategy execution platform. Draft a recovery \
+action plan for the following off-track (or at-risk) KPI.
+
+Indicator: {indicator_name} ({unit})
+Strategic pillar: {pillar_name}
+Calculation method: {calculation_method}
+Period under review: {period}
+Result: {result}
+Target: {target}
+
+Last 24 months of results (oldest to newest):
+{history}
+
+Propose probable causes for the deviation, a short list of concrete recovery \
+actions (each with a responsible role and a deadline_type of one of: \
+short_term, mid_term, long_term), and a monitoring suggestion. Respond with a \
+JSON object: {{"probable_causes": [...], "actions": [{{"action": ..., \
+"responsible": ..., "deadline_type": ...}}], "monitoring_suggestion": ...}}.
+"""

@@ -6,14 +6,17 @@ import { IndicatorDetail } from './IndicatorDetail'
 import { useIndicator } from '@/hooks/useIndicator'
 import { useCommentary } from '@/hooks/useCommentary'
 import { useDiagnostic } from '@/hooks/useDiagnostic'
+import { useActionPlan } from '@/hooks/useActionPlan'
 import { useRoleStore } from '@/store/role-store'
 
 vi.mock('@/hooks/useIndicator')
 vi.mock('@/hooks/useCommentary')
 vi.mock('@/hooks/useDiagnostic')
+vi.mock('@/hooks/useActionPlan')
 const mockedUseIndicator = vi.mocked(useIndicator)
 const mockedUseCommentary = vi.mocked(useCommentary)
 const mockedUseDiagnostic = vi.mocked(useDiagnostic)
+const mockedUseActionPlan = vi.mocked(useActionPlan)
 
 const INDICATOR_DATA = {
   name: 'Operating Cost Ratio',
@@ -50,10 +53,17 @@ const EMPTY_COMMENTARY = {
   author_id: null,
 }
 
+const EMPTY_ACTION_PLAN = {
+  period: '2024-12-01',
+  content: null,
+  author_id: null,
+}
+
 beforeEach(() => {
   mockedUseIndicator.mockReset()
   mockedUseCommentary.mockReset()
   mockedUseDiagnostic.mockReset()
+  mockedUseActionPlan.mockReset()
   mockedUseCommentary.mockReturnValue({
     data: EMPTY_COMMENTARY,
     loading: false,
@@ -61,6 +71,14 @@ beforeEach(() => {
     save: vi.fn().mockResolvedValue(undefined),
   })
   mockedUseDiagnostic.mockReturnValue({ data: null, loading: false, error: null })
+  mockedUseActionPlan.mockReturnValue({
+    data: EMPTY_ACTION_PLAN,
+    draft: null,
+    loading: false,
+    error: null,
+    generate: vi.fn().mockResolvedValue(undefined),
+    save: vi.fn().mockResolvedValue(undefined),
+  })
   useRoleStore.setState({ role: 'manager', areaId: null })
 })
 
@@ -230,5 +248,128 @@ describe('IndicatorDetail', () => {
       screen.getByRole('button', { name: /how the kpi score is calculated/i })
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^commentary$/i })).toBeInTheDocument()
+  })
+})
+
+const OFF_TRACK_INDICATOR_DATA = { ...INDICATOR_DATA, status: 'off_track' as const }
+
+const GENERATED_DRAFT = {
+  probable_causes: ['Vendor cost spike'],
+  actions: [
+    { action: 'Renegotiate vendor contract', responsible: 'manager', deadline_type: 'short_term' as const },
+  ],
+  monitoring_suggestion: 'Review monthly.',
+}
+
+describe('IndicatorDetail action plan generator', () => {
+  it('does not show the Suggest Action Plan button for an executive role', () => {
+    mockedUseIndicator.mockReturnValue({ data: OFF_TRACK_INDICATOR_DATA, loading: false, error: null })
+    useRoleStore.setState({ role: 'executive', areaId: null })
+
+    renderPage()
+
+    expect(screen.queryByRole('button', { name: /suggest action plan/i })).not.toBeInTheDocument()
+  })
+
+  it('does not show the Suggest Action Plan button for a manager when the indicator is on track', () => {
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+
+    renderPage()
+
+    expect(screen.queryByRole('button', { name: /suggest action plan/i })).not.toBeInTheDocument()
+  })
+
+  it('shows the Suggest Action Plan button for a manager on an off-track indicator', () => {
+    mockedUseIndicator.mockReturnValue({ data: OFF_TRACK_INDICATOR_DATA, loading: false, error: null })
+
+    renderPage()
+
+    expect(screen.getByRole('button', { name: /suggest action plan/i })).toBeInTheDocument()
+  })
+
+  it('generates a draft and populates an editable form', async () => {
+    const user = userEvent.setup()
+    const mockGenerate = vi.fn().mockResolvedValue(undefined)
+    mockedUseIndicator.mockReturnValue({ data: OFF_TRACK_INDICATOR_DATA, loading: false, error: null })
+    mockedUseActionPlan.mockReturnValue({
+      data: EMPTY_ACTION_PLAN,
+      draft: null,
+      loading: false,
+      error: null,
+      generate: mockGenerate,
+      save: vi.fn().mockResolvedValue(undefined),
+    })
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: /suggest action plan/i }))
+
+    expect(mockGenerate).toHaveBeenCalled()
+
+    mockedUseActionPlan.mockReturnValue({
+      data: EMPTY_ACTION_PLAN,
+      draft: GENERATED_DRAFT,
+      loading: false,
+      error: null,
+      generate: mockGenerate,
+      save: vi.fn().mockResolvedValue(undefined),
+    })
+    renderPage()
+
+    expect(screen.getByRole('textbox', { name: /probable causes/i })).toHaveValue(
+      'Vendor cost spike'
+    )
+    expect(screen.getByRole('textbox', { name: /monitoring suggestion/i })).toHaveValue(
+      'Review monthly.'
+    )
+  })
+
+  it('saves the (possibly edited) draft as the action plan', async () => {
+    const user = userEvent.setup()
+    const mockSave = vi.fn().mockResolvedValue(undefined)
+    mockedUseIndicator.mockReturnValue({ data: OFF_TRACK_INDICATOR_DATA, loading: false, error: null })
+    mockedUseActionPlan.mockReturnValue({
+      data: EMPTY_ACTION_PLAN,
+      draft: GENERATED_DRAFT,
+      loading: false,
+      error: null,
+      generate: vi.fn().mockResolvedValue(undefined),
+      save: mockSave,
+    })
+
+    renderPage()
+
+    const monitoringField = screen.getByRole('textbox', { name: /monitoring suggestion/i })
+    await user.clear(monitoringField)
+    await user.type(monitoringField, 'Review weekly.')
+    await user.click(screen.getByRole('button', { name: /save action plan/i }))
+
+    await waitFor(() =>
+      expect(mockSave).toHaveBeenCalledWith(
+        {
+          probable_causes: ['Vendor cost spike'],
+          actions: GENERATED_DRAFT.actions,
+          monitoring_suggestion: 'Review weekly.',
+        },
+        'manager'
+      )
+    )
+  })
+
+  it('shows the saved action plan content in the form when one already exists', () => {
+    mockedUseIndicator.mockReturnValue({ data: OFF_TRACK_INDICATOR_DATA, loading: false, error: null })
+    mockedUseActionPlan.mockReturnValue({
+      data: { ...EMPTY_ACTION_PLAN, content: GENERATED_DRAFT, author_id: 'manager' },
+      draft: null,
+      loading: false,
+      error: null,
+      generate: vi.fn().mockResolvedValue(undefined),
+      save: vi.fn().mockResolvedValue(undefined),
+    })
+
+    renderPage()
+
+    expect(screen.getByRole('textbox', { name: /probable causes/i })).toHaveValue(
+      'Vendor cost spike'
+    )
   })
 })
