@@ -1,8 +1,15 @@
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { useRoleStore } from "@/store/role-store";
 
 export function AppShell() {
+  const role = useRoleStore((state) => state.role);
+
+  if (!role) {
+    return <Navigate to="/select" replace />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
