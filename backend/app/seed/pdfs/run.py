@@ -14,9 +14,10 @@ from pathlib import Path
 from app.seed.data import AREAS, INDICATORS
 from app.seed.generate_results import generate_results_for_indicator
 from app.seed.pdfs.benchmark_report import generate_benchmark_report
+from app.seed.pdfs.llm_cache import LlmCache
 from app.seed.pdfs.manual import generate_manual
 from app.seed.pdfs.meeting_minutes import generate_meeting_minutes
-from app.seed.pdfs.narrative import build_narrative
+from app.seed.pdfs.meeting_minutes_narrative import build_context, generate_narrative
 from app.seed.pdfs.strategic_review import generate_strategic_review
 
 RECENT_MONTHS = 12  # of the 24 seeded months (indices 12-23 => calendar year 2024)
@@ -124,15 +125,22 @@ def generate_all_pdfs(output_dir: Path) -> list[Path]:
 
     results_by_area_period, previous_by_area_period = _build_results_by_area_period()
 
+    cache = LlmCache(output_dir / "llm_cache.json")
+
     for area in AREAS:
         area_key = area["key"]
         area_name = area["name"]
         periods = sorted({period for (a_key, period) in results_by_area_period if a_key == area_key})
         for period in periods:
             indicator_results = results_by_area_period[(area_key, period)]
-            narrative = build_narrative(
-                area_name, indicator_results, previous_by_area_period.get((area_key, period))
+            context = build_context(
+                area_name,
+                ATTENDEES_BY_AREA[area_key],
+                indicator_results,
+                previous_by_area_period.get((area_key, period)),
+                CROSS_AREA_REFERENCES.get((area_key, period)),
             )
+            narrative = generate_narrative(context, cache)
 
             minutes = {
                 "area_name": area_name,
@@ -149,4 +157,5 @@ def generate_all_pdfs(output_dir: Path) -> list[Path]:
             filename = f"minutes-{area_key}-{_period_label(period)}.pdf"
             paths.append(generate_meeting_minutes(minutes, output_dir / filename))
 
+    cache.save()
     return paths
