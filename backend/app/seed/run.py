@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-from pathlib import Path
 
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -24,9 +23,6 @@ from app.models import (
 from app.seed.data import AREAS, INDICATORS, PILLARS, RELATED_KPIS_EDGES
 from app.seed.generate_results import generate_results_for_indicator
 from app.seed.generate_scores import generate_department_scores
-from app.seed.pdfs.run import generate_all_pdfs
-
-PDF_OUTPUT_DIR = Path(__file__).parent / "output"
 
 
 def _database_url() -> str:
@@ -150,7 +146,6 @@ async def run() -> None:
 
 def main() -> None:
     asyncio.run(run())
-    generate_all_pdfs(PDF_OUTPUT_DIR)
 
 
 if __name__ == "__main__":
