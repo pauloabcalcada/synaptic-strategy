@@ -12,11 +12,11 @@ import random
 from datetime import date
 from typing import TypedDict
 
-from app.services.scoring import compute_kpi_score, compute_status
+from app.services.scoring import STATUS_TOLERANCE, compute_kpi_score, compute_status
 
 PERIODS = 24
 START_PERIOD = date(2023, 1, 1)
-TOLERANCE = 0.10
+TOLERANCE = STATUS_TOLERANCE
 OFF_TRACK_DIP_RATIO = 0.62
 SETBACK_RATIO = 0.84
 SUDDEN_DROP_RATIO = 0.55
