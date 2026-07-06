@@ -18,6 +18,10 @@ class Indicator(Base):
             "accumulation_type IN ('last', 'average', 'sum')",
             name="ck_indicators_accumulation_type",
         ),
+        CheckConstraint(
+            "kpi_type IN ('numerical', 'milestone')",
+            name="ck_indicators_kpi_type",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -30,6 +34,7 @@ class Indicator(Base):
     calculation_method: Mapped[str | None] = mapped_column(Text)
     composition: Mapped[str | None] = mapped_column(Text)
     accumulation_type: Mapped[str | None] = mapped_column(Text)
+    kpi_type: Mapped[str | None] = mapped_column(Text)
     area_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("areas.id")
     )
