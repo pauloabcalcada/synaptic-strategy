@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.config import Settings
 from app.models import (
+    AiDiagnostic,
     Area,
     Commentary,
     DepartmentScore,
@@ -32,6 +33,7 @@ def _database_url() -> str:
 
 async def _truncate_all(session: AsyncSession) -> None:
     for model in (
+        AiDiagnostic,
         Commentary,
         DepartmentScore,
         IndicatorResult,
