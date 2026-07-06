@@ -68,6 +68,7 @@ async def _seed(session: AsyncSession) -> None:
             calculation_method=indicator["calculation_method"],
             composition=indicator["composition"],
             accumulation_type=indicator["accumulation_type"],
+            kpi_type=indicator["kpi_type"],
             area_id=areas_by_key[indicator["area_key"]].id,
         )
         session.add(row)

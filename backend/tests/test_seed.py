@@ -70,19 +70,15 @@ async def test_seed_creates_408_indicator_results_with_scored_status(migrated_te
 
     rows = await db_conn.fetch(
         """
-        SELECT i.code, i.polarity, ir.result, ir.target, ir.kpi_score, ir.status
+        SELECT i.code, i.polarity, i.kpi_type, ir.result, ir.target, ir.kpi_score, ir.status
         FROM indicator_results ir
         JOIN indicators i ON i.id = ir.indicator_id
         """
     )
     assert len(rows) == 408
 
-    # kpi_type isn't a DB column (out of scope for the migrated schema), so
-    # cross-check against the source data module's kpi_type per code.
-    kpi_type_by_code = {row["code"]: row["kpi_type"] for row in INDICATORS}
-
     for row in rows:
-        kpi_type = kpi_type_by_code[row["code"]]
+        kpi_type = row["kpi_type"]
         polarity = "higher_is_better" if kpi_type == "milestone" else row["polarity"]
         expected_score = compute_kpi_score(
             float(row["result"]), float(row["target"]), polarity, kpi_type
