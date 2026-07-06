@@ -26,3 +26,11 @@ class TestSettings:
         assert s.OPENAI_API_KEY == ENV["OPENAI_API_KEY"]
         assert s.REDIS_URL == ENV["REDIS_URL"]
         assert s.ENVIRONMENT == ENV["ENVIRONMENT"]
+
+    def test_openai_chat_model_defaults_to_gpt_4o_mini(self):
+        with patch.dict("os.environ", ENV, clear=True):
+            from app.core.config import Settings
+
+            s = Settings()
+
+        assert s.OPENAI_CHAT_MODEL == "gpt-4o-mini"
