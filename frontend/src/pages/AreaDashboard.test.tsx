@@ -87,4 +87,20 @@ describe('AreaDashboard', () => {
     expect(screen.getByText('on_track')).toBeInTheDocument()
     expect(screen.getByText('off_track')).toBeInTheDocument()
   })
+
+  it('renders info buttons for the score formula, grade brackets, status thresholds, MoM trend, and chart reading guide', () => {
+    mockedUseAreaDashboard.mockReturnValue({
+      data: DASHBOARD_DATA,
+      loading: false,
+      error: null,
+    })
+
+    renderPage()
+
+    expect(screen.getByRole('button', { name: /department score formula/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /grade brackets/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /kpi status thresholds/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /month-over-month trend/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /reading the trend chart/i })).toBeInTheDocument()
+  })
 })

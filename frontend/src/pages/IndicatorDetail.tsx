@@ -8,6 +8,7 @@ import { useIndicator } from "@/hooks/useIndicator";
 import { useCommentary } from "@/hooks/useCommentary";
 import { useRoleStore } from "@/store/role-store";
 import { Button } from "@/components/ui/button";
+import { InfoButton } from "@/components/ui/info-button";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -84,11 +85,17 @@ export function IndicatorDetail() {
           <dd>{data.unit}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Polarity</dt>
+          <dt className="flex items-center gap-1 text-muted-foreground">
+            Polarity
+            <InfoButton textKey="polarity" />
+          </dt>
           <dd>{data.polarity}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Accumulation type</dt>
+          <dt className="flex items-center gap-1 text-muted-foreground">
+            Accumulation type
+            <InfoButton textKey="accumulationType" />
+          </dt>
           <dd>{data.accumulation_type}</dd>
         </div>
         <div>
@@ -96,11 +103,17 @@ export function IndicatorDetail() {
           <dd>{data.kpi_type}</dd>
         </div>
         <div className="col-span-2">
-          <dt className="text-muted-foreground">Calculation method</dt>
+          <dt className="flex items-center gap-1 text-muted-foreground">
+            Calculation method
+            <InfoButton textKey="calculationMethod" />
+          </dt>
           <dd>{data.calculation_method}</dd>
         </div>
         <div className="col-span-2">
-          <dt className="text-muted-foreground">Composition</dt>
+          <dt className="flex items-center gap-1 text-muted-foreground">
+            Composition
+            <InfoButton textKey="composition" />
+          </dt>
           <dd>{data.composition}</dd>
         </div>
       </dl>
@@ -112,8 +125,9 @@ export function IndicatorDetail() {
         <span className="rounded-lg bg-muted px-3 py-1 font-mono text-lg">
           Target: {data.target} {data.unit}
         </span>
-        <span className="rounded-lg bg-primary px-3 py-1 text-lg font-semibold text-primary-foreground">
+        <span className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1 text-lg font-semibold text-primary-foreground">
           {data.kpi_score}
+          <InfoButton textKey="scoreCurve" />
         </span>
         <span className={cn("font-medium", STATUS_STYLES[data.status])}>
           {data.status}
@@ -151,9 +165,12 @@ export function IndicatorDetail() {
         className="flex flex-col gap-2"
         onSubmit={form.handleSubmit(onSubmitCommentary)}
       >
-        <label htmlFor="commentary-content" className="text-sm text-muted-foreground">
-          Commentary
-        </label>
+        <div className="flex items-center gap-1">
+          <label htmlFor="commentary-content" className="text-sm text-muted-foreground">
+            Commentary
+          </label>
+          <InfoButton textKey="commentaryPanel" />
+        </div>
         <textarea
           id="commentary-content"
           className="min-h-24 rounded-lg border border-border bg-background p-2 text-sm"
