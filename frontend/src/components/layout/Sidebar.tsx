@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useRoleStore } from "@/store/role-store";
 
 const navItems = [
@@ -8,7 +8,13 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const { role, areaId } = useRoleStore();
+  const { role, areaId, setRole } = useRoleStore();
+  const navigate = useNavigate();
+
+  function switchRole() {
+    setRole(null, null);
+    navigate("/select");
+  }
 
   return (
     <div className="flex h-screen w-[220px] shrink-0 flex-col overflow-hidden border-r border-border bg-sidebar">
@@ -66,6 +72,12 @@ export function Sidebar() {
           <div className="text-[11px] text-muted-foreground">
             {areaId ?? "—"}
           </div>
+          <button
+            onClick={switchRole}
+            className="mt-2 font-mono text-[10px] tracking-wide text-primary uppercase hover:underline"
+          >
+            Switch role
+          </button>
         </div>
       </div>
     </div>

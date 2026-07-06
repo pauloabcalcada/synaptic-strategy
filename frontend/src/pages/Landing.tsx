@@ -42,7 +42,7 @@ export function Landing() {
         </p>
       </div>
 
-      <Button onClick={() => navigate("/executive")} size="lg">
+      <Button onClick={() => navigate("/select")} size="lg">
         Explore the Platform →
       </Button>
 
