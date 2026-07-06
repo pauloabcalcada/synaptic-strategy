@@ -6,7 +6,9 @@ import sys
 from pathlib import Path
 
 import asyncpg
+import httpx
 import pytest
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 BACKEND_DIR = Path(__file__).parent.parent
 
@@ -74,3 +76,32 @@ async def db_conn(migrated_test_db):
     conn = await asyncpg.connect(migrated_test_db["dsn"])
     yield conn
     await conn.close()
+
+
+@pytest.fixture
+async def api_client(migrated_test_db):
+    """An httpx client whose requests are served against the migrated test DB.
+
+    `app.core.database.get_session` binds an engine at import time, before
+    this fixture can point DATABASE_URL at the test DB, so requests must be
+    rerouted explicitly via a dependency override.
+    """
+    from app.core.database import get_session
+    from app.main import app
+
+    engine = create_async_engine(migrated_test_db["url"], echo=False)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    async def _get_test_session():
+        async with session_factory() as session:
+            yield session
+
+    app.dependency_overrides[get_session] = _get_test_session
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        yield client
+
+    app.dependency_overrides.pop(get_session, None)
+    await engine.dispose()
