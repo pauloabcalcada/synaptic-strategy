@@ -39,4 +39,5 @@ backend/app/seed/output/
 .claude/
 .agents/
 skills-lock.json
+docs/superpowers/
 
