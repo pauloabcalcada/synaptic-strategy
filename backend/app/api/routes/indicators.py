@@ -29,6 +29,7 @@ async def get_indicator_detail(
         raise HTTPException(status_code=404, detail="Indicator not found")
 
     resolved_period = await _resolve_period(session, period)
+    latest_period = await _resolve_period(session, None)
 
     current = await session.scalar(
         select(IndicatorResult)
@@ -40,7 +41,7 @@ async def get_indicator_detail(
         await session.scalars(
             select(IndicatorResult)
             .where(IndicatorResult.indicator_id == indicator.id)
-            .where(IndicatorResult.period <= resolved_period)
+            .where(IndicatorResult.period <= latest_period)
             .order_by(IndicatorResult.period.desc())
             .limit(HISTORY_LENGTH)
         )

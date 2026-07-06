@@ -119,6 +119,32 @@ async def test_detail_matches_seeded_data_for_milestone_indicator(
     assert len(body["history"]) == 24
 
 
+async def test_detail_history_stays_full_window_when_earlier_period_selected(
+    migrated_test_db, db_conn, api_client
+):
+    await run()
+
+    seeded_rows = await db_conn.fetch(
+        """
+        SELECT ir.period
+        FROM indicator_results ir
+        JOIN indicators i ON i.id = ir.indicator_id
+        WHERE i.code = 'FIN_OCR'
+        ORDER BY ir.period ASC
+        """
+    )
+
+    response = await api_client.get(
+        "/api/indicators/FIN_OCR", params={"period": "2024-06-01"}
+    )
+
+    body = response.json()
+    assert body["period"] == "2024-06-01"
+    history = body["history"]
+    assert len(history) == len(seeded_rows) == 24
+    assert history[-1]["period"] == seeded_rows[-1]["period"].isoformat()
+
+
 async def test_detail_unknown_code_returns_404(migrated_test_db, api_client):
     await run()
 
