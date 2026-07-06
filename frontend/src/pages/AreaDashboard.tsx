@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { useAreaDashboard } from "@/hooks/useAreaDashboard";
 import { useRoleStore } from "@/store/role-store";
+import { InfoButton } from "@/components/ui/info-button";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -48,16 +49,19 @@ export function AreaDashboard() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
-        <span className="rounded-lg bg-card px-4 py-2 font-mono text-2xl">
+        <span className="flex items-center gap-1 rounded-lg bg-card px-4 py-2 font-mono text-2xl">
           {data.score}
+          <InfoButton textKey="scoreFormula" />
         </span>
-        <span className="rounded-lg bg-primary px-3 py-1 text-lg font-semibold text-primary-foreground">
+        <span className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1 text-lg font-semibold text-primary-foreground">
           {data.grade}
+          <InfoButton textKey="gradeBrackets" />
         </span>
         {data.score_mom_delta !== null && (
-          <span className="font-mono text-sm text-muted-foreground">
+          <span className="flex items-center gap-1 font-mono text-sm text-muted-foreground">
             {data.score_mom_delta >= 0 ? "+" : ""}
             {data.score_mom_delta.toFixed(1)} MoM
+            <InfoButton textKey="momTrend" />
           </span>
         )}
       </div>
@@ -69,9 +73,19 @@ export function AreaDashboard() {
             <th className="pb-2">Result</th>
             <th className="pb-2">Target</th>
             <th className="pb-2">Score</th>
-            <th className="pb-2">Status</th>
+            <th className="pb-2">
+              <span className="flex items-center gap-1">
+                Status
+                <InfoButton textKey="statusThresholds" />
+              </span>
+            </th>
             <th className="pb-2">MoM</th>
-            <th className="pb-2">Trend</th>
+            <th className="pb-2">
+              <span className="flex items-center gap-1">
+                Trend
+                <InfoButton textKey="chartReadingGuide" />
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>

@@ -160,4 +160,19 @@ describe('IndicatorDetail', () => {
 
     expect(mockedUseIndicator).toHaveBeenLastCalledWith('FIN_OCR', '2024-11-01')
   })
+
+  it('renders info buttons for calculation method, composition, polarity, accumulation type, score curve, and commentary', () => {
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+
+    renderPage()
+
+    expect(screen.getByRole('button', { name: /calculation method/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^composition$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^polarity$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /accumulation type/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /how the kpi score is calculated/i })
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^commentary$/i })).toBeInTheDocument()
+  })
 })
