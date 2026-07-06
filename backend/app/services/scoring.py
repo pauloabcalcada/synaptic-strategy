@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Sequence
 
+GRADE_BRACKETS: dict[str, float] = {"A": 85.0, "B": 70.0, "C": 50.0, "D": 0.0}
+STATUS_TOLERANCE = 0.10
+
 
 def compute_kpi_score(
     result: float,
@@ -35,12 +38,9 @@ def compute_department_score(
 
 
 def score_to_grade(score: float) -> str:
-    if score >= 85:
-        return "A"
-    if score >= 70:
-        return "B"
-    if score >= 50:
-        return "C"
+    for grade, threshold in GRADE_BRACKETS.items():
+        if score >= threshold:
+            return grade
     return "D"
 
 

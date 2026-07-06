@@ -14,6 +14,8 @@ from pathlib import Path
 from app.seed.data import AREAS, INDICATORS
 from app.seed.generate_results import generate_results_for_indicator
 from app.seed.pdfs.benchmark_report import generate_benchmark_report
+from app.seed.pdfs.benchmark_report_narrative import build_context as build_benchmark_context
+from app.seed.pdfs.benchmark_report_narrative import generate_narrative as generate_benchmark_narrative
 from app.seed.pdfs.llm_cache import LlmCache
 from app.seed.pdfs.manual import generate_manual
 from app.seed.pdfs.meeting_minutes import generate_meeting_minutes
@@ -113,19 +115,44 @@ def _build_results_by_area_period() -> tuple[
     return by_area_period, previous_by_area_period
 
 
+def _build_area_performance_summary(
+    results_by_area_period: dict[tuple[str, date], list[dict]],
+) -> list[dict]:
+    summary = []
+    for area in AREAS:
+        area_key = area["key"]
+        counts = {"on_track": 0, "at_risk": 0, "off_track": 0}
+        for (a_key, _period), indicator_results in results_by_area_period.items():
+            if a_key != area_key:
+                continue
+            for indicator_result in indicator_results:
+                counts[indicator_result["status"]] += 1
+        summary.append({"area_name": area["name"], **counts})
+    return summary
+
+
 def generate_all_pdfs(output_dir: Path) -> list[Path]:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    results_by_area_period, previous_by_area_period = _build_results_by_area_period()
+    area_performance = _build_area_performance_summary(results_by_area_period)
+
+    cache = LlmCache(output_dir / "llm_cache.json")
+
+    benchmark_context = build_benchmark_context(BENCHMARKS, area_performance)
+    benchmark_narrative = generate_benchmark_narrative(benchmark_context, cache)
+    benchmark_report = {
+        "benchmarks": BENCHMARKS,
+        "area_performance": area_performance,
+        **benchmark_narrative,
+    }
+
     paths = [
         generate_manual(INDICATORS, output_dir / "novapay-indicator-manual-v2.pdf"),
         generate_strategic_review(STRATEGIC_REVISIONS, output_dir / "strategic-review-2024-q3.pdf"),
-        generate_benchmark_report(BENCHMARKS, output_dir / "kpi-benchmark-report-2024.pdf"),
+        generate_benchmark_report(benchmark_report, output_dir / "kpi-benchmark-report-2024.pdf"),
     ]
-
-    results_by_area_period, previous_by_area_period = _build_results_by_area_period()
-
-    cache = LlmCache(output_dir / "llm_cache.json")
 
     for area in AREAS:
         area_key = area["key"]
