@@ -61,6 +61,35 @@ async def _extensions(dsn: str) -> set[str]:
     return {row["extname"] for row in rows}
 
 
+async def _column_info(dsn: str, table: str, column: str):
+    conn = await asyncpg.connect(dsn)
+    row = await conn.fetchrow(
+        "SELECT data_type, is_nullable FROM information_schema.columns "
+        "WHERE table_name = $1 AND column_name = $2",
+        table,
+        column,
+    )
+    await conn.close()
+    return row
+
+
+async def _unique_constraint_columns(dsn: str, table: str) -> set[frozenset]:
+    conn = await asyncpg.connect(dsn)
+    rows = await conn.fetch(
+        """
+        SELECT array_agg(a.attname) AS cols
+        FROM pg_constraint c
+        JOIN unnest(c.conkey) AS k(attnum) ON true
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+        WHERE c.conrelid = $1::regclass AND c.contype = 'u'
+        GROUP BY c.oid
+        """,
+        table,
+    )
+    await conn.close()
+    return {frozenset(row["cols"]) for row in rows}
+
+
 # ---------------------------------------------------------------------------
 # fixture
 # ---------------------------------------------------------------------------
@@ -130,3 +159,22 @@ async def test_downgrade_base_then_upgrade_head_roundtrips(fresh_test_db):
     tables = await _public_tables(TEST_DSN)
     missing = EXPECTED_TABLES - tables
     assert not missing, f"Missing tables after re-upgrade: {missing}"
+
+
+async def test_action_plans_author_id_is_text_and_unique_per_indicator_period(
+    fresh_test_db,
+):
+    result = _run_alembic("upgrade", "head")
+    assert result.returncode == 0, (
+        f"alembic upgrade head failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+    author_id_col = await _column_info(TEST_DSN, "action_plans", "author_id")
+    assert author_id_col is not None, "action_plans.author_id column not found"
+    assert author_id_col["data_type"] == "text"
+
+    indicator_id_col = await _column_info(TEST_DSN, "action_plans", "indicator_id")
+    assert indicator_id_col["is_nullable"] == "NO"
+
+    unique_sets = await _unique_constraint_columns(TEST_DSN, "action_plans")
+    assert frozenset({"indicator_id", "period"}) in unique_sets

@@ -7,6 +7,7 @@ import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "rec
 import { useIndicator } from "@/hooks/useIndicator";
 import { useCommentary } from "@/hooks/useCommentary";
 import { useDiagnostic } from "@/hooks/useDiagnostic";
+import { useActionPlan, type ActionPlanContent } from "@/hooks/useActionPlan";
 import { useRoleStore } from "@/store/role-store";
 import { Button } from "@/components/ui/button";
 import { InfoButton } from "@/components/ui/info-button";
@@ -25,6 +26,20 @@ const commentaryFormSchema = z.object({
 
 type CommentaryFormValues = z.infer<typeof commentaryFormSchema>;
 
+const actionPlanFormSchema = z.object({
+  probable_causes: z.string(),
+  monitoring_suggestion: z.string(),
+});
+
+type ActionPlanFormValues = z.infer<typeof actionPlanFormSchema>;
+
+function toActionPlanFormValues(content: ActionPlanContent): ActionPlanFormValues {
+  return {
+    probable_causes: content.probable_causes.join("\n"),
+    monitoring_suggestion: content.monitoring_suggestion,
+  };
+}
+
 export function IndicatorDetail() {
   const [searchParams] = useSearchParams();
   const code = searchParams.get("code") ?? "";
@@ -38,14 +53,37 @@ export function IndicatorDetail() {
   } = useCommentary(code, commentaryPeriod);
   const { data: diagnostic } = useDiagnostic(code, commentaryPeriod);
   const [diagnosticExpanded, setDiagnosticExpanded] = useState(false);
+  const actionPlan = useActionPlan(code, commentaryPeriod);
+  const activeActionPlanContent = actionPlan.draft ?? actionPlan.data?.content ?? null;
 
   const form = useForm<CommentaryFormValues>({
     resolver: zodResolver(commentaryFormSchema),
     values: { content: commentary?.content ?? "" },
   });
 
+  const actionPlanForm = useForm<ActionPlanFormValues>({
+    resolver: zodResolver(actionPlanFormSchema),
+    values: activeActionPlanContent
+      ? toActionPlanFormValues(activeActionPlanContent)
+      : { probable_causes: "", monitoring_suggestion: "" },
+  });
+
   async function onSubmitCommentary(values: CommentaryFormValues) {
     await saveCommentary(values.content, role ?? "");
+  }
+
+  async function onSubmitActionPlan(values: ActionPlanFormValues) {
+    if (!activeActionPlanContent) {
+      return;
+    }
+    await actionPlan.save(
+      {
+        probable_causes: values.probable_causes.split("\n"),
+        actions: activeActionPlanContent.actions,
+        monitoring_suggestion: values.monitoring_suggestion,
+      },
+      role ?? ""
+    );
   }
 
   if (loading) {
@@ -213,6 +251,52 @@ export function IndicatorDetail() {
           Save commentary
         </Button>
       </form>
+
+      {role === "manager" && data.status === "off_track" && (
+        <AIPanel>
+          <div className="flex flex-col gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="self-start"
+              onClick={() => actionPlan.generate()}
+            >
+              Suggest Action Plan
+            </Button>
+
+            {activeActionPlanContent && (
+              <form
+                className="flex flex-col gap-2"
+                onSubmit={actionPlanForm.handleSubmit(onSubmitActionPlan)}
+              >
+                <label htmlFor="action-plan-causes" className="text-sm text-muted-foreground">
+                  Probable causes
+                </label>
+                <textarea
+                  id="action-plan-causes"
+                  className="min-h-16 rounded-lg border border-border bg-background p-2 text-sm"
+                  {...actionPlanForm.register("probable_causes")}
+                />
+                <label htmlFor="action-plan-monitoring" className="text-sm text-muted-foreground">
+                  Monitoring suggestion
+                </label>
+                <textarea
+                  id="action-plan-monitoring"
+                  className="min-h-16 rounded-lg border border-border bg-background p-2 text-sm"
+                  {...actionPlanForm.register("monitoring_suggestion")}
+                />
+                <Button
+                  type="submit"
+                  className="self-start"
+                  disabled={actionPlanForm.formState.isSubmitting}
+                >
+                  Save action plan
+                </Button>
+              </form>
+            )}
+          </div>
+        </AIPanel>
+      )}
     </div>
   );
 }
