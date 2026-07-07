@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import { useDiagnostic } from "@/hooks/useDiagnostic";
 import { useActionPlan, type ActionPlanContent } from "@/hooks/useActionPlan";
 import { useChat } from "@/hooks/useChat";
 import { useRoleStore } from "@/store/role-store";
+import { canOpenIndicator, canWrite, startPageFor } from "@/lib/roleAccess";
 import { Button } from "@/components/ui/button";
 import { InfoButton } from "@/components/ui/info-button";
 import { AIPanel } from "@/components/ui/ai-panel";
@@ -44,7 +45,11 @@ function toActionPlanFormValues(content: ActionPlanContent): ActionPlanFormValue
 export function IndicatorDetail() {
   const [searchParams] = useSearchParams();
   const code = searchParams.get("code") ?? "";
+  const indicatorAreaId = searchParams.get("areaId");
   const role = useRoleStore((state) => state.role);
+  const areaId = useRoleStore((state) => state.areaId);
+  const profileLabel = useRoleStore((state) => state.profileLabel);
+  const author = profileLabel ?? role ?? "";
   const [period, setPeriod] = useState<string | undefined>(undefined);
   const { data, loading, error } = useIndicator(code, period);
   const commentaryPeriod = data?.period;
@@ -73,7 +78,7 @@ export function IndicatorDetail() {
   });
 
   async function onSubmitCommentary(values: CommentaryFormValues) {
-    await saveCommentary(values.content, role ?? "");
+    await saveCommentary(values.content, author);
   }
 
   async function onSubmitChat(event: FormEvent) {
@@ -96,8 +101,12 @@ export function IndicatorDetail() {
         actions: activeActionPlanContent.actions,
         monitoring_suggestion: values.monitoring_suggestion,
       },
-      role ?? ""
+      author
     );
+  }
+
+  if (indicatorAreaId !== null && !canOpenIndicator(role, areaId, indicatorAreaId)) {
+    return <Navigate to={startPageFor(role)} replace />;
   }
 
   if (loading) {
@@ -312,7 +321,7 @@ export function IndicatorDetail() {
         </Button>
       </form>
 
-      {role === "manager" && data.status === "off_track" && (
+      {canWrite(role) && data.status === "off_track" && (
         <AIPanel>
           <div className="flex flex-col gap-3">
             <Button

@@ -1,13 +1,19 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { useRoleStore } from "@/store/role-store";
+import { canSeeExecutive, startPageFor } from "@/lib/roleAccess";
 
 export function AppShell() {
   const role = useRoleStore((state) => state.role);
+  const location = useLocation();
 
   if (!role) {
-    return <Navigate to="/select" replace />;
+    return <Navigate to="/" replace />;
+  }
+
+  if (location.pathname.startsWith("/executive") && !canSeeExecutive(role)) {
+    return <Navigate to={startPageFor(role)} replace />;
   }
 
   return (
