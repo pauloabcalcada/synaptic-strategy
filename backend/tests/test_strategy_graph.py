@@ -27,3 +27,36 @@ async def test_strategy_map_returns_node_per_active_indicator_and_9_seeded_edges
 
     expected_edge = {"source": "FIN_OCR", "target": "FIN_EBITDA", "label": "impacts"}
     assert expected_edge in edges
+
+
+async def test_strategy_map_node_carries_department_grade_weight_result_target(
+    migrated_test_db, db_conn, api_client
+):
+    await run()
+
+    seeded = await db_conn.fetchrow(
+        """
+        SELECT a.name AS department, ds.score, ds.grade, id.weight,
+               ir.result, ir.target
+        FROM indicators i
+        JOIN indicator_departments id ON id.indicator_id = i.id AND id.is_primary_owner = TRUE
+        JOIN areas a ON a.id = id.area_id
+        JOIN department_scores ds ON ds.area_id = a.id
+        JOIN indicator_results ir ON ir.indicator_id = i.id AND ir.period = ds.period
+        WHERE i.code = 'FIN_OCR'
+        ORDER BY ds.period DESC
+        LIMIT 1
+        """
+    )
+
+    response = await api_client.get("/api/graph/strategy-map")
+
+    body = response.json()
+    node = next(node for node in body["nodes"] if node["id"] == "FIN_OCR")
+
+    assert node["department"] == seeded["department"] == "Finance"
+    assert node["grade"] == seeded["grade"]
+    assert node["weight"] == pytest.approx(float(seeded["weight"])) == pytest.approx(0.30)
+    assert node["score"] == pytest.approx(float(seeded["score"]))
+    assert node["result"] == pytest.approx(float(seeded["result"]))
+    assert node["target"] == pytest.approx(float(seeded["target"]))
