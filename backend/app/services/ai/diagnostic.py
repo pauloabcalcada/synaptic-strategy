@@ -10,7 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.models import AiDiagnostic, Area, Indicator, IndicatorResult
+from app.models import AiDiagnostic, Indicator, IndicatorResult
+from app.services.ai.context import build_indicator_context
 from app.services.ai.degraded_mode import is_degraded
 from app.services.ai.prompts import DIAGNOSTIC_PROMPT_V1
 
@@ -25,45 +26,6 @@ MOCK_DIAGNOSTIC = {
     ),
     "suggested_focus": "Review what changed in the reporting period of the dip.",
 }
-
-
-async def _build_context(
-    session: AsyncSession, indicator: Indicator, period: date
-) -> dict:
-    area = (
-        await session.scalar(select(Area).where(Area.id == indicator.area_id))
-        if indicator.area_id
-        else None
-    )
-    current = await session.scalar(
-        select(IndicatorResult)
-        .where(IndicatorResult.indicator_id == indicator.id)
-        .where(IndicatorResult.period == period)
-    )
-    history_rows = (
-        await session.scalars(
-            select(IndicatorResult)
-            .where(IndicatorResult.indicator_id == indicator.id)
-            .where(IndicatorResult.period <= period)
-            .order_by(IndicatorResult.period.desc())
-            .limit(HISTORY_LENGTH)
-        )
-    ).all()
-    history = "\n".join(
-        f"{row.period.isoformat()}: result={row.result}, target={row.target}, "
-        f"status={row.status}"
-        for row in reversed(history_rows)
-    )
-    return {
-        "indicator_name": indicator.name,
-        "unit": indicator.unit,
-        "pillar_name": area.name if area else "unknown",
-        "calculation_method": indicator.calculation_method,
-        "period": period.isoformat(),
-        "result": current.result if current else None,
-        "target": current.target if current else None,
-        "history": history,
-    }
 
 
 async def _call_openai(settings: Settings, context: dict) -> dict:
@@ -108,7 +70,10 @@ async def diagnose_deviation(
     if is_degraded(dry_run, settings):
         result = MOCK_DIAGNOSTIC
     else:
-        context = await _build_context(session, indicator, period)
+        context = await build_indicator_context(
+            session, indicator, period=period, history_length=HISTORY_LENGTH
+        )
+        context["period"] = period.isoformat()
         result = await _call_openai(settings, context)
 
     diagnostic = AiDiagnostic(

@@ -20,6 +20,23 @@ JSON object: {{"pattern": ..., "confidence": ..., "description": ..., \
 "suggested_focus": ...}}.
 """
 
+CHAT_PROMPT_V1 = """\
+You are an analyst embedded in a strategy execution platform, answering questions \
+about the following KPI in a conversational chat. Ground every answer in the data \
+below; do not invent numbers.
+
+Indicator: {indicator_name} ({unit})
+Strategic pillar: {pillar_name}
+Calculation method: {calculation_method}
+Latest result: {result}
+Target: {target}
+
+Last 36 months of results (oldest to newest):
+{history}
+
+Answer the user's questions about this indicator concisely and factually.
+"""
+
 ACTION_PLAN_PROMPT_V1 = """\
 You are an analyst embedded in a strategy execution platform. Draft a recovery \
 action plan for the following off-track (or at-risk) KPI.

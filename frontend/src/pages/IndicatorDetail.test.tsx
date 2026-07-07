@@ -7,16 +7,19 @@ import { useIndicator } from '@/hooks/useIndicator'
 import { useCommentary } from '@/hooks/useCommentary'
 import { useDiagnostic } from '@/hooks/useDiagnostic'
 import { useActionPlan } from '@/hooks/useActionPlan'
+import { useChat } from '@/hooks/useChat'
 import { useRoleStore } from '@/store/role-store'
 
 vi.mock('@/hooks/useIndicator')
 vi.mock('@/hooks/useCommentary')
 vi.mock('@/hooks/useDiagnostic')
 vi.mock('@/hooks/useActionPlan')
+vi.mock('@/hooks/useChat')
 const mockedUseIndicator = vi.mocked(useIndicator)
 const mockedUseCommentary = vi.mocked(useCommentary)
 const mockedUseDiagnostic = vi.mocked(useDiagnostic)
 const mockedUseActionPlan = vi.mocked(useActionPlan)
+const mockedUseChat = vi.mocked(useChat)
 
 const INDICATOR_DATA = {
   name: 'Operating Cost Ratio',
@@ -64,6 +67,7 @@ beforeEach(() => {
   mockedUseCommentary.mockReset()
   mockedUseDiagnostic.mockReset()
   mockedUseActionPlan.mockReset()
+  mockedUseChat.mockReset()
   mockedUseCommentary.mockReturnValue({
     data: EMPTY_COMMENTARY,
     loading: false,
@@ -78,6 +82,11 @@ beforeEach(() => {
     error: null,
     generate: vi.fn().mockResolvedValue(undefined),
     save: vi.fn().mockResolvedValue(undefined),
+  })
+  mockedUseChat.mockReturnValue({
+    messages: [],
+    streaming: false,
+    send: vi.fn().mockResolvedValue(undefined),
   })
   useRoleStore.setState({ role: 'manager', areaId: null })
 })
@@ -371,5 +380,53 @@ describe('IndicatorDetail action plan generator', () => {
     expect(screen.getByRole('textbox', { name: /probable causes/i })).toHaveValue(
       'Vendor cost spike'
     )
+  })
+})
+
+describe('IndicatorDetail chat panel', () => {
+  it('does not show the chat panel until the "Chat with this Indicator" button is clicked', () => {
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+
+    renderPage()
+
+    expect(
+      screen.getByRole('button', { name: /chat with this indicator/i })
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: /ask a question/i })).not.toBeInTheDocument()
+  })
+
+  it('opens the chat panel and sends a question through useChat', async () => {
+    const user = userEvent.setup()
+    const mockSend = vi.fn().mockResolvedValue(undefined)
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+    mockedUseChat.mockReturnValue({ messages: [], streaming: false, send: mockSend })
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: /chat with this indicator/i }))
+
+    const input = screen.getByRole('textbox', { name: /ask a question/i })
+    await user.type(input, 'Why did this drop?')
+    await user.click(screen.getByRole('button', { name: /^send$/i }))
+
+    expect(mockSend).toHaveBeenCalledWith('Why did this drop?')
+  })
+
+  it('renders streamed messages progressively inside the panel', async () => {
+    const user = userEvent.setup()
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+    mockedUseChat.mockReturnValue({
+      messages: [
+        { role: 'user', content: 'Why did this drop?' },
+        { role: 'assistant', content: 'Costs rose due to a vendor spike.' },
+      ],
+      streaming: false,
+      send: vi.fn().mockResolvedValue(undefined),
+    })
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: /chat with this indicator/i }))
+
+    expect(screen.getByText('Why did this drop?')).toBeInTheDocument()
+    expect(screen.getByText('Costs rose due to a vendor spike.')).toBeInTheDocument()
   })
 })

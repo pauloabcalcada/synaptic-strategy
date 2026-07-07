@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +8,7 @@ import { useIndicator } from "@/hooks/useIndicator";
 import { useCommentary } from "@/hooks/useCommentary";
 import { useDiagnostic } from "@/hooks/useDiagnostic";
 import { useActionPlan, type ActionPlanContent } from "@/hooks/useActionPlan";
+import { useChat } from "@/hooks/useChat";
 import { useRoleStore } from "@/store/role-store";
 import { Button } from "@/components/ui/button";
 import { InfoButton } from "@/components/ui/info-button";
@@ -55,6 +56,9 @@ export function IndicatorDetail() {
   const [diagnosticExpanded, setDiagnosticExpanded] = useState(false);
   const actionPlan = useActionPlan(code, commentaryPeriod);
   const activeActionPlanContent = actionPlan.draft ?? actionPlan.data?.content ?? null;
+  const chat = useChat(code, role ?? "");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
 
   const form = useForm<CommentaryFormValues>({
     resolver: zodResolver(commentaryFormSchema),
@@ -70,6 +74,16 @@ export function IndicatorDetail() {
 
   async function onSubmitCommentary(values: CommentaryFormValues) {
     await saveCommentary(values.content, role ?? "");
+  }
+
+  async function onSubmitChat(event: FormEvent) {
+    event.preventDefault();
+    if (!chatInput.trim()) {
+      return;
+    }
+    const content = chatInput;
+    setChatInput("");
+    await chat.send(content);
   }
 
   async function onSubmitActionPlan(values: ActionPlanFormValues) {
@@ -105,21 +119,67 @@ export function IndicatorDetail() {
           <h1 className="text-2xl font-semibold">{data.name}</h1>
           <p className="text-sm text-muted-foreground">{data.code}</p>
         </div>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">Period</span>
-          <select
-            className="rounded-lg border border-border bg-background px-2 py-1"
-            value={data.period}
-            onChange={(event) => setPeriod(event.target.value)}
-          >
-            {data.history.map((entry) => (
-              <option key={entry.period} value={entry.period}>
-                {entry.period}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex items-start gap-4">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted-foreground">Period</span>
+            <select
+              className="rounded-lg border border-border bg-background px-2 py-1"
+              value={data.period}
+              onChange={(event) => setPeriod(event.target.value)}
+            >
+              {data.history.map((entry) => (
+                <option key={entry.period} value={entry.period}>
+                  {entry.period}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button type="button" variant="outline" onClick={() => setChatOpen(true)}>
+            Chat with this Indicator
+          </Button>
+        </div>
       </div>
+
+      {chatOpen && (
+        <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col gap-4 overflow-y-auto border-l border-border bg-background p-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Chat with {data.name}</h2>
+            <Button type="button" variant="ghost" onClick={() => setChatOpen(false)}>
+              Close
+            </Button>
+          </div>
+          <AIPanel>
+            <div className="flex flex-col gap-3 text-sm">
+              {chat.messages.map((message, index) => (
+                <p
+                  key={index}
+                  className={cn(
+                    message.role === "user"
+                      ? "self-end text-right text-foreground"
+                      : "self-start text-muted-foreground"
+                  )}
+                >
+                  {message.content}
+                </p>
+              ))}
+            </div>
+            <form className="flex gap-2 pt-3" onSubmit={onSubmitChat}>
+              <label className="sr-only" htmlFor="chat-input">
+                Ask a question
+              </label>
+              <input
+                id="chat-input"
+                className="flex-1 rounded-lg border border-border bg-background p-2 text-sm"
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+              />
+              <Button type="submit" disabled={chat.streaming}>
+                Send
+              </Button>
+            </form>
+          </AIPanel>
+        </div>
+      )}
 
       <dl className="grid grid-cols-2 gap-4 text-sm">
         <div>
