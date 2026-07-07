@@ -27,23 +27,23 @@ describe("Sidebar", () => {
     expect(screen.getByText("Area Dashboard")).toBeInTheDocument();
   });
 
-  it("shows the full nav to an executive", () => {
+  it("shows Executive Overview and Strategy Graph to an executive, but not Area Dashboard (no area is bound to them)", () => {
     useRoleStore.setState({ role: "executive", areaId: null, profileLabel: "Executive" });
 
     renderSidebar();
 
     expect(screen.getByText("Executive Overview")).toBeInTheDocument();
     expect(screen.getByText("Strategy Graph")).toBeInTheDocument();
-    expect(screen.getByText("Area Dashboard")).toBeInTheDocument();
+    expect(screen.queryByText("Area Dashboard")).not.toBeInTheDocument();
   });
 
-  it("shows the full nav to an admin", () => {
+  it("shows Executive Overview and Strategy Graph to an admin, but not Area Dashboard (no area is bound to them)", () => {
     useRoleStore.setState({ role: "admin", areaId: null, profileLabel: "Admin" });
 
     renderSidebar();
 
     expect(screen.getByText("Executive Overview")).toBeInTheDocument();
     expect(screen.getByText("Strategy Graph")).toBeInTheDocument();
-    expect(screen.getByText("Area Dashboard")).toBeInTheDocument();
+    expect(screen.queryByText("Area Dashboard")).not.toBeInTheDocument();
   });
 });

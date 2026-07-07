@@ -11,9 +11,11 @@ const navItems = [
 export function Sidebar() {
   const { role, areaId, setRole } = useRoleStore();
   const navigate = useNavigate();
-  const visibleNavItems = navItems.filter(
-    (item) => item.to !== "/executive" || canSeeExecutive(role)
-  );
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.to === "/executive") return canSeeExecutive(role);
+    if (item.to === "/area") return role === "manager";
+    return true;
+  });
 
   function switchRole() {
     setRole(null, null);

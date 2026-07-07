@@ -61,4 +61,20 @@ describe("AppShell", () => {
 
     expect(screen.getByText("Area Page")).toBeInTheDocument();
   });
+
+  it("redirects an executive away from the Area Dashboard (no area is bound to them)", () => {
+    useRoleStore.setState({ role: "executive", areaId: null, profileLabel: "Executive" });
+
+    renderAt("/area");
+
+    expect(screen.getByText("Executive Page")).toBeInTheDocument();
+  });
+
+  it("redirects an admin away from the Area Dashboard (no area is bound to them)", () => {
+    useRoleStore.setState({ role: "admin", areaId: null, profileLabel: "Admin" });
+
+    renderAt("/area");
+
+    expect(screen.getByText("Executive Page")).toBeInTheDocument();
+  });
 });

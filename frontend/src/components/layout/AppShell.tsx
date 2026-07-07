@@ -16,6 +16,10 @@ export function AppShell() {
     return <Navigate to={startPageFor(role)} replace />;
   }
 
+  if (location.pathname.startsWith("/area") && role !== "manager") {
+    return <Navigate to={startPageFor(role)} replace />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
