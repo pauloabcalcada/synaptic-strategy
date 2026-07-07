@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { IndicatorDetail } from './IndicatorDetail'
 import { useIndicator } from '@/hooks/useIndicator'
 import { useCommentary } from '@/hooks/useCommentary'
@@ -428,5 +428,70 @@ describe('IndicatorDetail chat panel', () => {
 
     expect(screen.getByText('Why did this drop?')).toBeInTheDocument()
     expect(screen.getByText('Costs rose due to a vendor spike.')).toBeInTheDocument()
+  })
+})
+
+describe('IndicatorDetail role gating via roleAccess', () => {
+  it('shows the Suggest Action Plan button for an admin on an off-track indicator', () => {
+    mockedUseIndicator.mockReturnValue({ data: OFF_TRACK_INDICATOR_DATA, loading: false, error: null })
+    useRoleStore.setState({ role: 'admin', areaId: null, profileLabel: 'Admin' })
+
+    renderPage()
+
+    expect(screen.getByRole('button', { name: /suggest action plan/i })).toBeInTheDocument()
+  })
+
+  it('redirects a manager away from another area\'s indicator to their own area', () => {
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+    useRoleStore.setState({ role: 'manager', areaId: 'area-1', profileLabel: 'Sales Manager' })
+
+    render(
+      <MemoryRouter initialEntries={['/indicator?code=FIN_OCR&areaId=area-2']}>
+        <Routes>
+          <Route path="/indicator" element={<IndicatorDetail />} />
+          <Route path="/area" element={<div>Area Page</div>} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText('Area Page')).toBeInTheDocument()
+  })
+
+  it('attributes saved commentary with the active profileLabel when present', async () => {
+    const user = userEvent.setup()
+    const mockSave = vi.fn().mockResolvedValue(undefined)
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+    mockedUseCommentary.mockReturnValue({
+      data: EMPTY_COMMENTARY,
+      loading: false,
+      error: null,
+      save: mockSave,
+    })
+    useRoleStore.setState({ role: 'manager', areaId: 'area-1', profileLabel: 'Sales Manager' })
+
+    renderPage()
+    const textbox = screen.getByRole('textbox', { name: /commentary/i })
+    await user.type(textbox, 'Revised note.')
+    await user.click(screen.getByRole('button', { name: /save commentary/i }))
+
+    await waitFor(() =>
+      expect(mockSave).toHaveBeenCalledWith('Revised note.', 'Sales Manager')
+    )
+  })
+
+  it('lets a manager open an indicator tagged with their own area', () => {
+    mockedUseIndicator.mockReturnValue({ data: INDICATOR_DATA, loading: false, error: null })
+    useRoleStore.setState({ role: 'manager', areaId: 'area-1', profileLabel: 'Sales Manager' })
+
+    render(
+      <MemoryRouter initialEntries={['/indicator?code=FIN_OCR&areaId=area-1']}>
+        <Routes>
+          <Route path="/indicator" element={<IndicatorDetail />} />
+          <Route path="/area" element={<div>Area Page</div>} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByText('Operating Cost Ratio')).toBeInTheDocument()
   })
 })

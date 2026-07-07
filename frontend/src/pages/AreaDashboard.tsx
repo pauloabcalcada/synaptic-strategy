@@ -93,7 +93,7 @@ export function AreaDashboard() {
             <tr key={kpi.code} className="border-t border-border">
               <td className="py-2">
                 <Link
-                  to={`/indicator?code=${kpi.code}`}
+                  to={`/indicator?code=${kpi.code}&areaId=${areaId}`}
                   className="hover:text-primary hover:underline"
                 >
                   {kpi.name}

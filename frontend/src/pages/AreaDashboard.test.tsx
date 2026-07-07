@@ -103,4 +103,19 @@ describe('AreaDashboard', () => {
     expect(screen.getByRole('button', { name: /month-over-month trend/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /reading the trend chart/i })).toBeInTheDocument()
   })
+
+  it('links each KPI to the indicator detail page tagged with the current area', () => {
+    mockedUseAreaDashboard.mockReturnValue({
+      data: DASHBOARD_DATA,
+      loading: false,
+      error: null,
+    })
+
+    renderPage()
+
+    expect(screen.getByRole('link', { name: /operating cost ratio/i })).toHaveAttribute(
+      'href',
+      '/indicator?code=FIN_OCR&areaId=area-1'
+    )
+  })
 })

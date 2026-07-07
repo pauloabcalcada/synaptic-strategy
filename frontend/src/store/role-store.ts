@@ -1,12 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type Role = "executive" | "manager" | null;
+export type Role = "executive" | "manager" | "admin" | null;
 
 interface RoleState {
   role: Role;
   areaId: string | null;
-  setRole: (role: Role, areaId: string | null) => void;
+  profileLabel: string | null;
+  setRole: (role: Role, areaId: string | null, profileLabel?: string | null) => void;
 }
 
 export const useRoleStore = create<RoleState>()(
@@ -14,7 +15,8 @@ export const useRoleStore = create<RoleState>()(
     (set) => ({
       role: null,
       areaId: null,
-      setRole: (role, areaId) => set({ role, areaId }),
+      profileLabel: null,
+      setRole: (role, areaId, profileLabel = null) => set({ role, areaId, profileLabel }),
     }),
     { name: "synaptic-strategy-role" }
   )

@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useRoleStore } from "@/store/role-store";
+import { canSeeExecutive } from "@/lib/roleAccess";
 
 const navItems = [
   { to: "/executive", label: "Executive Overview" },
@@ -10,10 +11,13 @@ const navItems = [
 export function Sidebar() {
   const { role, areaId, setRole } = useRoleStore();
   const navigate = useNavigate();
+  const visibleNavItems = navItems.filter(
+    (item) => item.to !== "/executive" || canSeeExecutive(role)
+  );
 
   function switchRole() {
     setRole(null, null);
-    navigate("/select");
+    navigate("/");
   }
 
   return (
@@ -36,7 +40,7 @@ export function Sidebar() {
           Navigation
         </div>
         <nav className="flex flex-col gap-0.5">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
