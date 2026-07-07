@@ -1,12 +1,21 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AreaDashboard } from './AreaDashboard'
 import { useAreaDashboard } from '@/hooks/useAreaDashboard'
+import { useAreas } from '@/hooks/useAreas'
 import { useRoleStore } from '@/store/role-store'
 
 vi.mock('@/hooks/useAreaDashboard')
+vi.mock('@/hooks/useAreas')
 const mockedUseAreaDashboard = vi.mocked(useAreaDashboard)
+const mockedUseAreas = vi.mocked(useAreas)
+
+const AREAS = [
+  { id: 'area-1', name: 'Sales', pillar: 'Growth', score: 82.3, grade: 'B' },
+  { id: 'area-2', name: 'Support', pillar: 'Ops', score: 91.0, grade: 'A' },
+]
 
 const DASHBOARD_DATA = {
   period: '2024-12-01',
@@ -48,7 +57,8 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  useRoleStore.setState({ role: 'manager', areaId: 'area-1' })
+  useRoleStore.setState({ role: 'manager', areaId: 'area-1', profileLabel: 'Sales Manager' })
+  mockedUseAreas.mockReturnValue({ areas: null, loading: false, error: null })
 })
 
 describe('AreaDashboard', () => {
@@ -116,6 +126,42 @@ describe('AreaDashboard', () => {
     expect(screen.getByRole('link', { name: /operating cost ratio/i })).toHaveAttribute(
       'href',
       '/indicator?code=FIN_OCR&areaId=area-1'
+    )
+  })
+
+  it('does not show an area picker for a manager', () => {
+    mockedUseAreaDashboard.mockReturnValue({ data: DASHBOARD_DATA, loading: false, error: null })
+    mockedUseAreas.mockReturnValue({ areas: AREAS, loading: false, error: null })
+
+    renderPage()
+
+    expect(screen.queryByRole('combobox', { name: /area/i })).not.toBeInTheDocument()
+  })
+
+  it('shows an area picker for an executive, defaulting to the first area', () => {
+    useRoleStore.setState({ role: 'executive', areaId: null, profileLabel: 'Executive' })
+    mockedUseAreas.mockReturnValue({ areas: AREAS, loading: false, error: null })
+    mockedUseAreaDashboard.mockReturnValue({ data: DASHBOARD_DATA, loading: false, error: null })
+
+    renderPage()
+
+    expect(screen.getByRole('combobox', { name: /area/i })).toHaveValue('area-1')
+    expect(mockedUseAreaDashboard).toHaveBeenCalledWith('area-1')
+  })
+
+  it('lets an admin switch which area the dashboard shows', async () => {
+    const user = userEvent.setup()
+    useRoleStore.setState({ role: 'admin', areaId: null, profileLabel: 'Admin' })
+    mockedUseAreas.mockReturnValue({ areas: AREAS, loading: false, error: null })
+    mockedUseAreaDashboard.mockReturnValue({ data: DASHBOARD_DATA, loading: false, error: null })
+
+    renderPage()
+    await user.selectOptions(screen.getByRole('combobox', { name: /area/i }), 'area-2')
+
+    expect(mockedUseAreaDashboard).toHaveBeenLastCalledWith('area-2')
+    expect(screen.getByRole('link', { name: /operating cost ratio/i })).toHaveAttribute(
+      'href',
+      '/indicator?code=FIN_OCR&areaId=area-2'
     )
   })
 })

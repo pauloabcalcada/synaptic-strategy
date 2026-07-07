@@ -3,24 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useRoleStore } from "@/store/role-store";
 import { profileLabelFor, startPageFor } from "@/lib/roleAccess";
+import { useAreas, type AreaSummary } from "@/hooks/useAreas";
 import { cn } from "@/lib/utils";
 
 type BackendStatus = "checking" | "connected" | "unreachable";
-
-interface AreaSummary {
-  id: string;
-  name: string;
-  pillar: string;
-  score: number;
-  grade: string;
-}
 
 export function Landing() {
   const navigate = useNavigate();
   const setRole = useRoleStore((state) => state.setRole);
   const [status, setStatus] = useState<BackendStatus>("checking");
-  const [areas, setAreas] = useState<AreaSummary[] | null>(null);
-  const [areasError, setAreasError] = useState(false);
+  const { areas, error: areasError } = useAreas();
 
   useEffect(() => {
     let cancelled = false;
@@ -35,13 +27,6 @@ export function Landing() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    api
-      .get<AreaSummary[]>("/api/areas")
-      .then((response) => setAreas(response.data))
-      .catch(() => setAreasError(true));
   }, []);
 
   function chooseArea(area: AreaSummary) {
@@ -131,7 +116,7 @@ export function Landing() {
             </span>
           </button>
 
-          {areasError && (
+          {areasError !== null && (
             <div className="col-span-full text-sm text-destructive">
               Couldn't load the list of areas. Please try again.
             </div>
