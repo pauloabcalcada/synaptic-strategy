@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { useAreaDashboard } from "@/hooks/useAreaDashboard";
 import { useAreas } from "@/hooks/useAreas";
@@ -37,9 +37,11 @@ export function AreaDashboard() {
   const ownAreaId = useRoleStore((state) => state.areaId);
   const canBrowseAreas = role !== "manager";
   const { areas } = useAreas(canBrowseAreas);
+  const [searchParams] = useSearchParams();
+  const requestedAreaId = searchParams.get("id");
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const areaId = canBrowseAreas
-    ? (selectedAreaId ?? areas?.[0]?.id ?? null)
+    ? (selectedAreaId ?? requestedAreaId ?? areas?.[0]?.id ?? null)
     : ownAreaId;
   const { data, loading, error } = useAreaDashboard(areaId ?? "");
 
