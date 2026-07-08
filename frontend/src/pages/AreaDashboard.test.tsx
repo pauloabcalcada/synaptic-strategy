@@ -48,9 +48,9 @@ const DASHBOARD_DATA = {
   ],
 }
 
-function renderPage() {
+function renderPage(path = '/area') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[path]}>
       <AreaDashboard />
     </MemoryRouter>
   )
@@ -163,5 +163,16 @@ describe('AreaDashboard', () => {
       'href',
       '/indicator?code=FIN_OCR&areaId=area-2'
     )
+  })
+
+  it('preselects the area from an ?id= query param (e.g. arriving from the Executive Overview)', () => {
+    useRoleStore.setState({ role: 'admin', areaId: null, profileLabel: 'Admin' })
+    mockedUseAreas.mockReturnValue({ areas: AREAS, loading: false, error: null })
+    mockedUseAreaDashboard.mockReturnValue({ data: DASHBOARD_DATA, loading: false, error: null })
+
+    renderPage('/area?id=area-2')
+
+    expect(screen.getByRole('combobox', { name: /area/i })).toHaveValue('area-2')
+    expect(mockedUseAreaDashboard).toHaveBeenCalledWith('area-2')
   })
 })
