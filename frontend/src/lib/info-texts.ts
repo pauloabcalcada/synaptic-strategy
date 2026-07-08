@@ -66,6 +66,21 @@ export const infoTexts = {
     body: 'A manager can record a note about this indicator for the viewed period. Notes are per period and can be edited at any time.',
     mode: 'tooltip',
   },
+  graphEdgeDirection: {
+    title: 'Reading directed edges',
+    body: 'An arrow points from an upstream (cause) KPI to the downstream (effect) KPI it influences. The graph is laid out left to right, so causes generally sit to the left of the effects they drive.',
+    mode: 'tooltip',
+  },
+  graphNodeEncoding: {
+    title: 'Node encoding',
+    body: 'Node fill color shows the owning department. Node border color shows the KPI’s current department grade (A–D). Node size scales with the KPI’s weight — its contribution to its department’s score.',
+    mode: 'tooltip',
+  },
+  graphRelationshipLabels: {
+    title: 'Relationship labels',
+    body: 'Each edge is labeled with the kind of causal relationship it represents, such as "drives", "enables", or "impacts", describing how the upstream KPI affects the downstream one.',
+    mode: 'tooltip',
+  },
   executiveScoreAggregation: {
     title: 'Score aggregation',
     body: 'Each area card shows its current department score and grade, taken directly from the latest pre-computed department score — not recalculated on the fly — plus the change versus the prior month.',
