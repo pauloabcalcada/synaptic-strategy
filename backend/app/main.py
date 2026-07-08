@@ -6,6 +6,7 @@ from app.api.routes import (
     ai,
     areas,
     commentaries,
+    executive,
     graph,
     indicators,
     meta,
@@ -29,6 +30,7 @@ app.include_router(commentaries.router, prefix="/api", tags=["commentaries"])
 app.include_router(action_plans.router, prefix="/api", tags=["action-plans"])
 app.include_router(graph.router, prefix="/api", tags=["graph"])
 app.include_router(ai.router, prefix="/api", tags=["ai"])
+app.include_router(executive.router, prefix="/api", tags=["executive"])
 
 
 @app.get("/health")

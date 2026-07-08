@@ -66,6 +66,21 @@ export const infoTexts = {
     body: 'A manager can record a note about this indicator for the viewed period. Notes are per period and can be edited at any time.',
     mode: 'tooltip',
   },
+  executiveScoreAggregation: {
+    title: 'Score aggregation',
+    body: 'Each area card shows its current department score and grade, taken directly from the latest pre-computed department score — not recalculated on the fly — plus the change versus the prior month.',
+    mode: 'tooltip',
+  },
+  executiveHeatmapLegend: {
+    title: 'Heatmap legend',
+    body: 'Each row is an area and each column a month. Cell color reflects the grade for that period: green for A, blue for B, amber for C, and red for D. A blank cell means no score was recorded for that period.',
+    mode: 'tooltip',
+  },
+  executivePillarGrouping: {
+    title: 'Pillar grouping',
+    body: 'Areas roll up into strategic pillars. A pillar’s grade is the average of its member areas’ current scores, banded using the same grade brackets as an individual area.',
+    mode: 'tooltip',
+  },
 } as const
 
 export type InfoTextKey = keyof typeof infoTexts
