@@ -195,6 +195,7 @@ export function Landing() {
   const navigate = useNavigate();
   const setRole = useRoleStore((state) => state.setRole);
   const [status, setStatus] = useState<BackendStatus>("checking");
+  const [managerExpanded, setManagerExpanded] = useState(false);
   const { areas, error: areasError } = useAreas();
 
   const aggregateStats = useMemo(() => {
@@ -309,24 +310,22 @@ export function Landing() {
           that perspective.
         </p>
         <div className="grid w-full max-w-6xl gap-4 pt-4 sm:grid-cols-2 lg:grid-cols-3">
-          {areas?.map((area) => {
-            const profileLabel = profileLabelFor(area);
-            return (
-              <RoleCard
-                key={area.id}
-                testId={`role-card-${area.id}`}
-                title={profileLabel}
-                description={MANAGER_DESCRIPTION}
-                stats={kpiStatTiles(
-                  area.kpi_count,
-                  area.status_breakdown.on_track ?? 0,
-                  area.status_breakdown.off_track ?? 0
-                )}
-                ctaLabel={`Enter as ${profileLabel} →`}
-                onSelect={() => chooseArea(area)}
-              />
-            );
-          })}
+          <RoleCard
+            testId="role-card-manager"
+            title="Manager"
+            description={MANAGER_DESCRIPTION}
+            stats={
+              aggregateStats
+                ? kpiStatTiles(
+                    aggregateStats.kpiCount,
+                    aggregateStats.onTrack,
+                    aggregateStats.offTrack
+                  )
+                : undefined
+            }
+            ctaLabel={managerExpanded ? "Hide Departments ↑" : "Choose a Department →"}
+            onSelect={() => setManagerExpanded((expanded) => !expanded)}
+          />
 
           <RoleCard
             testId="role-card-executive"
@@ -361,13 +360,41 @@ export function Landing() {
             ctaLabel="Enter as Platform Admin →"
             onSelect={chooseAdmin}
           />
-
-          {areasError !== null && (
-            <div className="col-span-full text-sm text-destructive">
-              Couldn't load the list of areas. Please try again.
-            </div>
-          )}
         </div>
+
+        {areasError !== null && (
+          <div className="text-sm text-destructive">
+            Couldn't load the list of areas. Please try again.
+          </div>
+        )}
+
+        {managerExpanded && areas && (
+          <div className="flex w-full max-w-6xl flex-col items-center gap-4 pt-4">
+            <h3 className="text-lg font-semibold text-foreground">
+              Select your department
+            </h3>
+            <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {areas.map((area) => {
+                const profileLabel = profileLabelFor(area);
+                return (
+                  <RoleCard
+                    key={area.id}
+                    testId={`role-card-${area.id}`}
+                    title={profileLabel}
+                    description={MANAGER_DESCRIPTION}
+                    stats={kpiStatTiles(
+                      area.kpi_count,
+                      area.status_breakdown.on_track ?? 0,
+                      area.status_breakdown.off_track ?? 0
+                    )}
+                    ctaLabel={`Enter as ${profileLabel} →`}
+                    onSelect={() => chooseArea(area)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
