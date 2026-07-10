@@ -124,26 +124,54 @@ describe("Landing", () => {
   });
 
   describe("role selector", () => {
-    it("renders a 'Choose your perspective' section with one manager card per area plus an Executive and Admin card", async () => {
-      renderLanding();
-
-      expect(
-        screen.getByRole("heading", { name: /choose your perspective/i })
-      ).toBeInTheDocument();
-      expect(await screen.findByText("Sales Manager")).toBeInTheDocument();
-      expect(screen.getByText("Support Manager")).toBeInTheDocument();
-      expect(screen.getByText("Executive")).toBeInTheDocument();
-      expect(screen.getByText("Platform Admin")).toBeInTheDocument();
-    });
-
     function statTileValue(card: HTMLElement, label: string): string | null {
       const labelEl = within(card).getByText(label);
       return labelEl.previousElementSibling?.textContent ?? null;
     }
 
-    it("shows KPI count, on-track count, and off-track count stat tiles on each manager card", async () => {
+    it("renders a 'Choose your perspective' section with exactly Manager, Executive, and Platform Admin cards", async () => {
       renderLanding();
-      await screen.findByText("Sales Manager");
+
+      expect(
+        screen.getByRole("heading", { name: /choose your perspective/i })
+      ).toBeInTheDocument();
+      expect(await screen.findByText("Manager")).toBeInTheDocument();
+      expect(screen.getByText("Executive")).toBeInTheDocument();
+      expect(screen.getByText("Platform Admin")).toBeInTheDocument();
+
+      // department cards are not shown until Manager is expanded
+      expect(screen.queryByText("Sales Manager")).not.toBeInTheDocument();
+      expect(screen.queryByText("Support Manager")).not.toBeInTheDocument();
+    });
+
+    it("shows aggregate KPI stat tiles across all areas on the Manager, Executive, and Admin cards", async () => {
+      renderLanding();
+      await screen.findByText("Manager");
+
+      // totals: kpi_count 5+4=9, on_track 3+4=7, off_track 1+0=1
+      for (const testId of ["role-card-manager", "role-card-executive", "role-card-admin"]) {
+        const card = screen.getByTestId(testId);
+        expect(statTileValue(card, "KPIs")).toBe("9");
+        expect(statTileValue(card, "On Track")).toBe("7");
+        expect(statTileValue(card, "Off Track")).toBe("1");
+      }
+    });
+
+    it("expands into one department card per area when the Manager card's CTA is clicked", async () => {
+      renderLanding();
+      await screen.findByText("Manager");
+
+      expect(screen.queryByText("Sales Manager")).not.toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Choose a Department →" })
+      );
+
+      expect(await screen.findByText("Sales Manager")).toBeInTheDocument();
+      expect(screen.getByText("Support Manager")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Hide Departments ↑" })
+      ).toBeInTheDocument();
 
       const salesCard = screen.getByTestId("role-card-area-1");
       expect(statTileValue(salesCard, "KPIs")).toBe("5");
@@ -156,29 +184,31 @@ describe("Landing", () => {
       expect(statTileValue(supportCard, "Off Track")).toBe("0");
     });
 
-    it("shows aggregate KPI stat tiles across all areas on the Executive and Admin cards", async () => {
+    it("collapses the department cards again when clicked a second time", async () => {
       renderLanding();
-      await screen.findByText("Sales Manager");
+      await screen.findByText("Manager");
 
-      // totals: kpi_count 5+4=9, on_track 3+4=7, off_track 1+0=1
-      const executiveCard = screen.getByTestId("role-card-executive");
-      expect(statTileValue(executiveCard, "KPIs")).toBe("9");
-      expect(statTileValue(executiveCard, "On Track")).toBe("7");
-      expect(statTileValue(executiveCard, "Off Track")).toBe("1");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Choose a Department →" })
+      );
+      expect(await screen.findByText("Sales Manager")).toBeInTheDocument();
 
-      const adminCard = screen.getByTestId("role-card-admin");
-      expect(statTileValue(adminCard, "KPIs")).toBe("9");
-      expect(statTileValue(adminCard, "On Track")).toBe("7");
-      expect(statTileValue(adminCard, "Off Track")).toBe("1");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Hide Departments ↑" })
+      );
+      expect(screen.queryByText("Sales Manager")).not.toBeInTheDocument();
     });
 
     it("shows a full-width Enter as [Role] CTA on every role card", async () => {
       renderLanding();
 
-      await screen.findByText("Sales Manager");
+      await screen.findByText("Manager");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Choose a Department →" })
+      );
 
       expect(
-        screen.getByRole("button", { name: "Enter as Sales Manager →" })
+        await screen.findByRole("button", { name: "Enter as Sales Manager →" })
       ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Enter as Support Manager →" })
@@ -193,6 +223,11 @@ describe("Landing", () => {
 
     it("selecting a manager card sets role/areaId/profileLabel and navigates to the area dashboard", async () => {
       renderLanding();
+
+      await screen.findByText("Manager");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Choose a Department →" })
+      );
 
       const card = await screen.findByRole("button", {
         name: "Enter as Sales Manager →",
