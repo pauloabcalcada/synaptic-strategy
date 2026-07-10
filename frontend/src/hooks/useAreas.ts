@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 
+export type KpiStatus = 'on_track' | 'at_risk' | 'off_track'
+
 export interface AreaSummary {
   id: string
   name: string
   pillar: string
   score: number
   grade: string
+  kpi_count: number
+  status_breakdown: Partial<Record<KpiStatus, number>>
 }
 
 interface UseAreasResult {

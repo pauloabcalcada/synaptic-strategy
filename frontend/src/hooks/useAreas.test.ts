@@ -10,8 +10,24 @@ vi.mock('@/lib/api', () => ({
 const mockedGet = vi.mocked(api.get)
 
 const AREAS_RESPONSE = [
-  { id: 'area-1', name: 'Sales', pillar: 'Growth', score: 82.3, grade: 'B' },
-  { id: 'area-2', name: 'Support', pillar: 'Ops', score: 91.0, grade: 'A' },
+  {
+    id: 'area-1',
+    name: 'Sales',
+    pillar: 'Growth',
+    score: 82.3,
+    grade: 'B',
+    kpi_count: 5,
+    status_breakdown: { on_track: 3, at_risk: 1, off_track: 1 },
+  },
+  {
+    id: 'area-2',
+    name: 'Support',
+    pillar: 'Ops',
+    score: 91.0,
+    grade: 'A',
+    kpi_count: 4,
+    status_breakdown: { on_track: 4 },
+  },
 ]
 
 beforeEach(() => {
