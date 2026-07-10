@@ -8,45 +8,34 @@ import { useExecutiveOverview } from '@/hooks/useExecutiveOverview'
 vi.mock('@/hooks/useExecutiveOverview')
 const mockedUseExecutiveOverview = vi.mocked(useExecutiveOverview)
 
+const AREA_NAMES = ['Finance', 'Sales', 'Marketing', 'Operations', 'People'] as const
+
 const OVERVIEW_DATA = {
-  areas: [
-    {
-      area_id: 'area-1',
-      name: 'Finance',
-      pillar: 'Revenue Growth',
-      score: 86.4,
-      grade: 'A',
-      score_mom_delta: -3.2,
-    },
-    {
-      area_id: 'area-2',
-      name: 'Sales',
-      pillar: 'Revenue Growth',
-      score: 71.0,
-      grade: 'B',
-      score_mom_delta: 1.5,
-    },
-  ],
+  areas: AREA_NAMES.map((name, index) => ({
+    area_id: `area-${index + 1}`,
+    name,
+    pillar: 'Revenue Growth',
+    score: 86.4,
+    grade: 'A',
+    score_mom_delta: -3.2,
+  })),
   pillars: [
     {
       name: 'Revenue Growth',
-      areas: ['Finance', 'Sales'],
+      areas: [...AREA_NAMES],
       rollup_grade: 'B',
       rollup_score: 78.7,
     },
   ],
-  heatmap: [
-    {
-      area_id: 'area-1',
-      name: 'Finance',
-      cells: [{ period: '2024-12-01', grade: 'A', score: 86.4 }],
-    },
-    {
-      area_id: 'area-2',
-      name: 'Sales',
-      cells: [{ period: '2024-12-01', grade: 'B', score: 71.0 }],
-    },
-  ],
+  heatmap: AREA_NAMES.map((name, index) => ({
+    area_id: `area-${index + 1}`,
+    name,
+    cells: Array.from({ length: 9 }, (_, periodIndex) => ({
+      period: `2024-${String(periodIndex + 1).padStart(2, '0')}-01`,
+      grade: 'A',
+      score: 86.4,
+    })),
+  })),
 }
 
 function renderPage() {
@@ -90,7 +79,7 @@ describe('Executive', () => {
     // Score cards
     expect(screen.getAllByText('Finance').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Sales').length).toBeGreaterThan(0)
-    expect(screen.getByText('86.4')).toBeInTheDocument()
+    expect(screen.getAllByText('86.4').length).toBeGreaterThan(0)
 
     // Pillar panel
     expect(screen.getAllByText('Revenue Growth').length).toBeGreaterThan(0)
@@ -121,5 +110,37 @@ describe('Executive', () => {
       '/area?id=area-1'
     )
     await user.click(screen.getByRole('link', { name: /finance/i }))
+  })
+
+  it('lays out all five department score cards in a single row on wide screens', () => {
+    mockedUseExecutiveOverview.mockReturnValue({ data: OVERVIEW_DATA, loading: false, error: null })
+
+    renderPage()
+
+    const financeCard = screen.getByRole('link', { name: /finance/i })
+    const cardGrid = financeCard.parentElement
+    expect(cardGrid?.children.length).toBe(AREA_NAMES.length)
+    expect(cardGrid?.className).toMatch(/xl:grid-cols-5/)
+  })
+
+  it('defaults the heatmap to the most recent 6 periods and expands to full history on request', async () => {
+    const user = userEvent.setup()
+    mockedUseExecutiveOverview.mockReturnValue({ data: OVERVIEW_DATA, loading: false, error: null })
+
+    renderPage()
+
+    const columnHeaders = screen.getAllByRole('columnheader')
+    // one header is the "Area" label column, the rest are period columns
+    expect(columnHeaders.length - 1).toBe(6)
+    expect(screen.queryByText('2024-01')).not.toBeInTheDocument()
+    expect(screen.getByText('2024-09')).toBeInTheDocument()
+
+    const expandButton = screen.getByRole('button', { name: /show full history/i })
+    await user.click(expandButton)
+
+    const expandedHeaders = screen.getAllByRole('columnheader')
+    expect(expandedHeaders.length - 1).toBe(9)
+    expect(screen.getByText('2024-01')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /show recent/i })).toBeInTheDocument()
   })
 })
