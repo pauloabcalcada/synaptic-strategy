@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { Landing } from "./Landing";
@@ -90,14 +90,14 @@ describe("Landing", () => {
     it("renders the how-it-works flow", () => {
       renderLanding();
 
-      expect(
-        screen.getByRole("heading", { name: /how it works/i })
-      ).toBeInTheDocument();
-      expect(screen.getByText("Company Strategy")).toBeInTheDocument();
-      expect(screen.getByText("Departments")).toBeInTheDocument();
-      expect(screen.getByText("KPIs")).toBeInTheDocument();
-      expect(screen.getByText("Scores")).toBeInTheDocument();
-      expect(screen.getByText("AI Insights")).toBeInTheDocument();
+      const heading = screen.getByRole("heading", { name: /^how it works$/i });
+      const section = heading.closest("section") as HTMLElement;
+
+      expect(within(section).getByText("Company Strategy")).toBeInTheDocument();
+      expect(within(section).getByText("Departments")).toBeInTheDocument();
+      expect(within(section).getByText("KPIs")).toBeInTheDocument();
+      expect(within(section).getByText("Scores")).toBeInTheDocument();
+      expect(within(section).getByText("AI Insights")).toBeInTheDocument();
     });
 
     it("renders one card per AI feature with a name and description", () => {
@@ -124,33 +124,52 @@ describe("Landing", () => {
   });
 
   describe("role selector", () => {
-    it("renders one manager card per area plus an Executive and Admin card", async () => {
+    it("renders a 'Choose your perspective' section with one manager card per area plus an Executive and Admin card", async () => {
       renderLanding();
 
+      expect(
+        screen.getByRole("heading", { name: /choose your perspective/i })
+      ).toBeInTheDocument();
       expect(await screen.findByText("Sales Manager")).toBeInTheDocument();
       expect(screen.getByText("Support Manager")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Enter as Executive →" })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Enter as Admin →" })
-      ).toBeInTheDocument();
+      expect(screen.getByText("Executive")).toBeInTheDocument();
+      expect(screen.getByText("Platform Admin")).toBeInTheDocument();
     });
 
-    it("shows KPI count and status-breakdown stat chips on each manager card", async () => {
-      renderLanding();
+    function statTileValue(card: HTMLElement, label: string): string | null {
+      const labelEl = within(card).getByText(label);
+      return labelEl.previousElementSibling?.textContent ?? null;
+    }
 
+    it("shows KPI count, on-track count, and off-track count stat tiles on each manager card", async () => {
+      renderLanding();
       await screen.findByText("Sales Manager");
 
-      expect(screen.getByText("5 KPIs")).toBeInTheDocument();
-      expect(screen.getByText("3 on track")).toBeInTheDocument();
-      expect(screen.getByText("1 at risk")).toBeInTheDocument();
-      expect(screen.getByText("1 off track")).toBeInTheDocument();
+      const salesCard = screen.getByTestId("role-card-area-1");
+      expect(statTileValue(salesCard, "KPIs")).toBe("5");
+      expect(statTileValue(salesCard, "On Track")).toBe("3");
+      expect(statTileValue(salesCard, "Off Track")).toBe("1");
 
-      expect(screen.getByText("4 KPIs")).toBeInTheDocument();
-      expect(screen.getByText("4 on track")).toBeInTheDocument();
-      expect(screen.getByText("0 at risk")).toBeInTheDocument();
-      expect(screen.getByText("0 off track")).toBeInTheDocument();
+      const supportCard = screen.getByTestId("role-card-area-2");
+      expect(statTileValue(supportCard, "KPIs")).toBe("4");
+      expect(statTileValue(supportCard, "On Track")).toBe("4");
+      expect(statTileValue(supportCard, "Off Track")).toBe("0");
+    });
+
+    it("shows aggregate KPI stat tiles across all areas on the Executive and Admin cards", async () => {
+      renderLanding();
+      await screen.findByText("Sales Manager");
+
+      // totals: kpi_count 5+4=9, on_track 3+4=7, off_track 1+0=1
+      const executiveCard = screen.getByTestId("role-card-executive");
+      expect(statTileValue(executiveCard, "KPIs")).toBe("9");
+      expect(statTileValue(executiveCard, "On Track")).toBe("7");
+      expect(statTileValue(executiveCard, "Off Track")).toBe("1");
+
+      const adminCard = screen.getByTestId("role-card-admin");
+      expect(statTileValue(adminCard, "KPIs")).toBe("9");
+      expect(statTileValue(adminCard, "On Track")).toBe("7");
+      expect(statTileValue(adminCard, "Off Track")).toBe("1");
     });
 
     it("shows a full-width Enter as [Role] CTA on every role card", async () => {
@@ -168,7 +187,7 @@ describe("Landing", () => {
         screen.getByRole("button", { name: "Enter as Executive →" })
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Enter as Admin →" })
+        screen.getByRole("button", { name: "Enter as Platform Admin →" })
       ).toBeInTheDocument();
     });
 
@@ -205,7 +224,9 @@ describe("Landing", () => {
     it("selecting the Admin card sets role and navigates to the Executive Overview", async () => {
       renderLanding();
 
-      const card = await screen.findByRole("button", { name: "Enter as Admin →" });
+      const card = await screen.findByRole("button", {
+        name: "Enter as Platform Admin →",
+      });
       await userEvent.click(card);
 
       expect(useRoleStore.getState()).toMatchObject({
