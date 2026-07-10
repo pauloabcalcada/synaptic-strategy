@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import {
   useExecutiveOverview,
   type ExecutiveOverviewArea,
@@ -103,13 +104,15 @@ function Heatmap({ rows }: { rows: ExecutiveOverviewHeatmapRow[] }) {
         </tbody>
       </table>
       {hasHiddenHistory && (
-        <button
+        <Button
           type="button"
+          variant="link"
+          size="sm"
+          className="self-start px-0"
           onClick={() => setExpanded((current) => !current)}
-          className="self-start text-xs font-medium text-primary hover:underline"
         >
           {expanded ? "Show recent 6 periods" : "Show full history"}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -137,7 +140,7 @@ export function Executive() {
           <h2 className="text-lg font-semibold text-foreground">Areas</h2>
           <InfoButton textKey="executiveScoreAggregation" />
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {data.areas.map((area) => (
             <AreaScoreCard key={area.area_id} area={area} />
           ))}

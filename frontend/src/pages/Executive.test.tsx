@@ -120,7 +120,7 @@ describe('Executive', () => {
     const financeCard = screen.getByRole('link', { name: /finance/i })
     const cardGrid = financeCard.parentElement
     expect(cardGrid?.children.length).toBe(AREA_NAMES.length)
-    expect(cardGrid?.className).toMatch(/xl:grid-cols-5/)
+    expect(cardGrid?.className).toMatch(/lg:grid-cols-5/)
   })
 
   it('defaults the heatmap to the most recent 6 periods and expands to full history on request', async () => {
