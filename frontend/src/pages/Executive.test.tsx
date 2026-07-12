@@ -172,6 +172,32 @@ describe('Executive', () => {
     expect(screen.getByText('78')).toBeInTheDocument()
   })
 
+  it('rounds a heatmap cell score to a whole number instead of showing raw floating point', () => {
+    mockedUseExecutiveOverview.mockReturnValue({
+      data: {
+        ...OVERVIEW_DATA,
+        heatmap: [
+          {
+            ...OVERVIEW_DATA.heatmap[0],
+            cells: OVERVIEW_DATA.heatmap[0].cells.map((cell, index) =>
+              index === OVERVIEW_DATA.heatmap[0].cells.length - 1
+                ? { ...cell, score: 78.49123456789 }
+                : cell
+            ),
+          },
+          ...OVERVIEW_DATA.heatmap.slice(1),
+        ],
+      },
+      loading: false,
+      error: null,
+    })
+
+    renderPage()
+
+    expect(screen.getByText('78')).toBeInTheDocument()
+    expect(screen.queryByText('78.49123456789')).not.toBeInTheDocument()
+  })
+
   it('stretches the default 6-period heatmap to the full page width but not the expanded view', async () => {
     const user = userEvent.setup()
     mockedUseExecutiveOverview.mockReturnValue({ data: OVERVIEW_DATA, loading: false, error: null })
