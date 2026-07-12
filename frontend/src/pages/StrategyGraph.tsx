@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ReactFlow,
@@ -6,6 +6,8 @@ import {
   Controls,
   Handle,
   Position,
+  useNodesState,
+  useEdgesState,
   type Node,
   type Edge,
   type NodeProps,
@@ -94,7 +96,8 @@ function KpiNode({ data }: NodeProps) {
           ⚠️
         </span>
       )}
-      {node.label}
+      <span>{node.label}</span>
+      <span className="font-mono text-sm font-semibold">{Math.round(node.score)}</span>
       <Handle type="source" position={Position.Right} />
     </div>
   );
@@ -238,13 +241,15 @@ export function StrategyGraph() {
   const { data, loading, error } = useStrategyGraph();
   const navigate = useNavigate();
   const [hover, setHover] = useState<HoverState | null>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  const { flowNodes, flowEdges } = useMemo(() => {
-    if (!data) {
-      return { flowNodes: [], flowEdges: [] };
-    }
-    return layoutGraph(data.nodes, data.edges);
-  }, [data]);
+  useEffect(() => {
+    if (!data) return;
+    const { flowNodes, flowEdges } = layoutGraph(data.nodes, data.edges);
+    setNodes(flowNodes);
+    setEdges(flowEdges);
+  }, [data, setNodes, setEdges]);
 
   const handleNodeHover: NodeMouseHandler = (event, node) => {
     if (node.type !== "kpiNode") return;
@@ -286,8 +291,10 @@ export function StrategyGraph() {
       </div>
       <div className="relative h-[70vh] w-full rounded-lg border border-border">
         <ReactFlow
-          nodes={flowNodes}
-          edges={flowEdges}
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
           nodeTypes={NODE_TYPES}
           onNodeClick={(_event, node) => {
             if (node.type === "kpiNode") navigate(`/indicator?code=${node.id}`);
