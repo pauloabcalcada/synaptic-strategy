@@ -40,7 +40,7 @@ function AreaScoreCard({ area }: { area: ExecutiveOverviewArea }) {
         <GradeBadge grade={area.grade} />
       </div>
       <div className="flex items-center gap-3">
-        <span className="font-mono text-2xl text-foreground">{area.score}</span>
+        <span className="font-mono text-2xl text-foreground">{Math.round(area.score)}</span>
         {area.score_mom_delta !== null && (
           <span className="font-mono text-sm text-muted-foreground">
             {area.score_mom_delta >= 0 ? "+" : ""}

@@ -79,7 +79,7 @@ describe('Executive', () => {
     // Score cards
     expect(screen.getAllByText('Finance').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Sales').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('86.4').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('86').length).toBeGreaterThan(0)
 
     // Pillar panel
     expect(screen.getAllByText('Revenue Growth').length).toBeGreaterThan(0)
@@ -87,6 +87,25 @@ describe('Executive', () => {
 
     // Graph-link card
     expect(screen.getByRole('link', { name: /strategy graph/i })).toHaveAttribute('href', '/graph')
+  })
+
+  it('rounds an area score card to a whole number instead of showing raw floating point', () => {
+    mockedUseExecutiveOverview.mockReturnValue({
+      data: {
+        ...OVERVIEW_DATA,
+        areas: [
+          { ...OVERVIEW_DATA.areas[0], score: 86.10672797740617 },
+          ...OVERVIEW_DATA.areas.slice(1),
+        ],
+      },
+      loading: false,
+      error: null,
+    })
+
+    renderPage()
+
+    expect(screen.getAllByText('86').length).toBeGreaterThan(0)
+    expect(screen.queryByText('86.10672797740617')).not.toBeInTheDocument()
   })
 
   it('renders info buttons for score aggregation, heatmap legend, and pillar grouping', () => {
