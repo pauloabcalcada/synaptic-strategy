@@ -10,6 +10,7 @@ export interface StrategyGraphNode {
   weight: number
   result: number
   target: number
+  active_diagnostic: boolean
 }
 
 export interface StrategyGraphEdge {

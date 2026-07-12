@@ -20,6 +20,7 @@ const STRATEGY_MAP_RESPONSE = {
       weight: 0.3,
       result: 60.1,
       target: 62.0,
+      active_diagnostic: true,
     },
   ],
   edges: [{ source: 'FIN_OCR', target: 'FIN_EBITDA', label: 'impacts' }],
@@ -41,6 +42,7 @@ describe('useStrategyGraph', () => {
 
     expect(mockedGet).toHaveBeenCalledWith('/api/graph/strategy-map')
     expect(result.current.data).toEqual(STRATEGY_MAP_RESPONSE)
+    expect(result.current.data?.nodes[0].active_diagnostic).toBe(true)
     expect(result.current.error).toBeNull()
   })
 
