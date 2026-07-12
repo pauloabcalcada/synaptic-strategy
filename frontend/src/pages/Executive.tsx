@@ -67,44 +67,46 @@ function Heatmap({ rows }: { rows: ExecutiveOverviewHeatmapRow[] }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <table className="w-full text-left text-sm">
-        <thead className="text-muted-foreground">
-          <tr>
-            <th className="pb-2 pr-4">Area</th>
-            {periods.map((period) => (
-              <th key={period} className="pb-2 px-1 font-mono text-xs font-normal">
-                {period.slice(0, 7)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const cellsByPeriod = new Map(row.cells.map((cell) => [cell.period, cell]));
-            return (
-              <tr key={row.area_id} className="border-t border-border">
-                <td className="py-1 pr-4">{row.name}</td>
-                {periods.map((period) => {
-                  const cell = cellsByPeriod.get(period);
-                  return (
-                    <td key={period} className="px-1 py-1">
-                      <div
-                        className={cn(
-                          "flex min-w-16 items-center justify-center rounded-md py-3 font-mono text-sm font-bold",
-                          cell ? (GRADE_STYLES[cell.grade] ?? "bg-muted") : "bg-transparent"
-                        )}
-                        title={cell ? `${cell.period}: ${cell.grade} (${cell.score})` : "No data"}
-                      >
-                        {cell ? cell.score : ""}
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="w-full overflow-x-auto">
+        <table className="text-left text-sm">
+          <thead className="text-muted-foreground">
+            <tr>
+              <th className="sticky left-0 z-10 bg-background pb-2 pr-4">Area</th>
+              {periods.map((period) => (
+                <th key={period} className="pb-2 px-1 font-mono text-xs font-normal">
+                  {period.slice(0, 7)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const cellsByPeriod = new Map(row.cells.map((cell) => [cell.period, cell]));
+              return (
+                <tr key={row.area_id} className="border-t border-border">
+                  <td className="sticky left-0 z-10 bg-background py-1 pr-4">{row.name}</td>
+                  {periods.map((period) => {
+                    const cell = cellsByPeriod.get(period);
+                    return (
+                      <td key={period} className="px-1 py-1">
+                        <div
+                          className={cn(
+                            "flex min-w-16 items-center justify-center rounded-md py-3 font-mono text-sm font-bold",
+                            cell ? (GRADE_STYLES[cell.grade] ?? "bg-muted") : "bg-transparent"
+                          )}
+                          title={cell ? `${cell.period}: ${cell.grade} (${cell.score})` : "No data"}
+                        >
+                          {cell ? cell.score : ""}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
       {hasHiddenHistory && (
         <Button
           type="button"
