@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import {
   useExecutiveOverview,
   type ExecutiveOverviewArea,
@@ -51,48 +53,72 @@ function AreaScoreCard({ area }: { area: ExecutiveOverviewArea }) {
   );
 }
 
+const HEATMAP_DEFAULT_PERIOD_COUNT = 6;
+
 function Heatmap({ rows }: { rows: ExecutiveOverviewHeatmapRow[] }) {
-  const periods = Array.from(
+  const [expanded, setExpanded] = useState(false);
+  const allPeriods = Array.from(
     new Set(rows.flatMap((row) => row.cells.map((cell) => cell.period)))
   ).sort();
+  const hasHiddenHistory = allPeriods.length > HEATMAP_DEFAULT_PERIOD_COUNT;
+  const periods = expanded
+    ? allPeriods
+    : allPeriods.slice(-HEATMAP_DEFAULT_PERIOD_COUNT);
 
   return (
-    <table className="w-full text-left text-sm">
-      <thead className="text-muted-foreground">
-        <tr>
-          <th className="pb-2 pr-4">Area</th>
-          {periods.map((period) => (
-            <th key={period} className="pb-2 px-1 font-mono text-xs font-normal">
-              {period.slice(0, 7)}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => {
-          const cellsByPeriod = new Map(row.cells.map((cell) => [cell.period, cell]));
-          return (
-            <tr key={row.area_id} className="border-t border-border">
-              <td className="py-1 pr-4">{row.name}</td>
-              {periods.map((period) => {
-                const cell = cellsByPeriod.get(period);
-                return (
-                  <td key={period} className="px-1 py-1">
-                    <div
-                      className={cn(
-                        "size-5 rounded-sm",
-                        cell ? (GRADE_STYLES[cell.grade] ?? "bg-muted") : "bg-transparent"
-                      )}
-                      title={cell ? `${cell.period}: ${cell.grade} (${cell.score})` : "No data"}
-                    />
-                  </td>
-                );
-              })}
+    <div className="flex flex-col gap-2">
+      <div className="w-full overflow-x-auto">
+        <table className={cn("text-left text-sm", !expanded && "w-full")}>
+          <thead className="text-muted-foreground">
+            <tr>
+              <th className="sticky left-0 z-10 bg-background pb-2 pr-4">Area</th>
+              {periods.map((period) => (
+                <th key={period} className="pb-2 px-1 font-mono text-xs font-normal">
+                  {period.slice(0, 7)}
+                </th>
+              ))}
             </tr>
-          );
-        })}
-      </tbody>
-    </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const cellsByPeriod = new Map(row.cells.map((cell) => [cell.period, cell]));
+              return (
+                <tr key={row.area_id} className="border-t border-border">
+                  <td className="sticky left-0 z-10 bg-background py-1 pr-4">{row.name}</td>
+                  {periods.map((period) => {
+                    const cell = cellsByPeriod.get(period);
+                    return (
+                      <td key={period} className="px-1 py-1">
+                        <div
+                          className={cn(
+                            "flex min-w-16 items-center justify-center rounded-md py-3 font-mono text-sm font-bold",
+                            cell ? (GRADE_STYLES[cell.grade] ?? "bg-muted") : "bg-transparent"
+                          )}
+                          title={cell ? `${cell.period}: ${cell.grade} (${cell.score})` : "No data"}
+                        >
+                          {cell ? cell.score : ""}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {hasHiddenHistory && (
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="self-start px-0"
+          onClick={() => setExpanded((current) => !current)}
+        >
+          {expanded ? "Show recent 6 periods" : "Show full history"}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -118,7 +144,7 @@ export function Executive() {
           <h2 className="text-lg font-semibold text-foreground">Areas</h2>
           <InfoButton textKey="executiveScoreAggregation" />
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {data.areas.map((area) => (
             <AreaScoreCard key={area.area_id} area={area} />
           ))}
