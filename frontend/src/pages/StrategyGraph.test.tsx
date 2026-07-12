@@ -95,4 +95,41 @@ describe('StrategyGraph', () => {
 
     expect(screen.getAllByTitle('Active AI diagnostic')).toHaveLength(1)
   })
+
+  it('groups nodes under a department heading', () => {
+    mockedUseStrategyGraph.mockReturnValue({ data: GRAPH_DATA, loading: false, error: null })
+
+    renderPage()
+
+    expect(screen.getByText('Finance')).toBeInTheDocument()
+  })
+
+  it('groups nodes from different departments under separate headings', () => {
+    mockedUseStrategyGraph.mockReturnValue({
+      data: {
+        nodes: [
+          ...GRAPH_DATA.nodes,
+          {
+            id: 'SALES_CONV',
+            label: 'Conversion Rate',
+            department: 'Sales',
+            score: 72.1,
+            grade: 'B',
+            weight: 0.25,
+            result: 12.4,
+            target: 15.0,
+            active_diagnostic: false,
+          },
+        ],
+        edges: GRAPH_DATA.edges,
+      },
+      loading: false,
+      error: null,
+    })
+
+    renderPage()
+
+    expect(screen.getByText('Finance')).toBeInTheDocument()
+    expect(screen.getByText('Sales')).toBeInTheDocument()
+  })
 })
