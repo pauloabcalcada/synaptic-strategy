@@ -63,8 +63,12 @@ interface HoverState {
   y: number;
 }
 
+function asKpiNodeData(data: NodeProps["data"]): StrategyGraphNode {
+  return data as unknown as StrategyGraphNode;
+}
+
 function KpiNode({ data }: NodeProps) {
-  const node = data as unknown as StrategyGraphNode;
+  const node = asKpiNodeData(data);
   const { width, height } = nodeDimensions(node.weight);
 
   return (
@@ -153,8 +157,8 @@ function layoutGraph(
     { minX: number; minY: number; maxX: number; maxY: number }
   >();
   for (const flowNode of kpiFlowNodes) {
-    const department = (flowNode.data as unknown as StrategyGraphNode).department;
-    const { width, height } = nodeDimensions((flowNode.data as unknown as StrategyGraphNode).weight);
+    const { department, weight } = asKpiNodeData(flowNode.data);
+    const { width, height } = nodeDimensions(weight);
     const bounds = groupsByDepartment.get(department);
     const minX = flowNode.position.x;
     const minY = flowNode.position.y;
@@ -233,14 +237,9 @@ export function StrategyGraph() {
     return layoutGraph(data.nodes, data.edges);
   }, [data]);
 
-  const handleNodeMouseEnter: NodeMouseHandler = (event, node) => {
+  const handleNodeHover: NodeMouseHandler = (event, node) => {
     if (node.type !== "kpiNode") return;
-    setHover({ node: node.data as unknown as StrategyGraphNode, x: event.clientX, y: event.clientY });
-  };
-
-  const handleNodeMouseMove: NodeMouseHandler = (event, node) => {
-    if (node.type !== "kpiNode") return;
-    setHover({ node: node.data as unknown as StrategyGraphNode, x: event.clientX, y: event.clientY });
+    setHover({ node: asKpiNodeData(node.data), x: event.clientX, y: event.clientY });
   };
 
   const handleNodeMouseLeave: NodeMouseHandler = () => {
@@ -284,8 +283,8 @@ export function StrategyGraph() {
           onNodeClick={(_event, node) => {
             if (node.type === "kpiNode") navigate(`/indicator?code=${node.id}`);
           }}
-          onNodeMouseEnter={handleNodeMouseEnter}
-          onNodeMouseMove={handleNodeMouseMove}
+          onNodeMouseEnter={handleNodeHover}
+          onNodeMouseMove={handleNodeHover}
           onNodeMouseLeave={handleNodeMouseLeave}
           fitView
         >
