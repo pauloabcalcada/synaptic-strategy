@@ -33,6 +33,8 @@ const DASHBOARD_DATA = {
       status: 'on_track' as const,
       mom_trend: 1.2,
       sparkline: [70, 75, 80, 82.5],
+      weight: 0.3,
+      variance: 1.9,
     },
     {
       code: 'GOV_REG',
@@ -44,6 +46,8 @@ const DASHBOARD_DATA = {
       status: 'off_track' as const,
       mom_trend: null,
       sparkline: [100, 0],
+      weight: 0.2,
+      variance: -100,
     },
   ],
 }
@@ -96,6 +100,21 @@ describe('AreaDashboard', () => {
     expect(screen.getByText('Operating Cost Ratio')).toBeInTheDocument()
     expect(screen.getByText('on_track')).toBeInTheDocument()
     expect(screen.getByText('off_track')).toBeInTheDocument()
+  })
+
+  it('shows each KPI weight as a subtitle and variance as a column', () => {
+    mockedUseAreaDashboard.mockReturnValue({
+      data: DASHBOARD_DATA,
+      loading: false,
+      error: null,
+    })
+
+    renderPage()
+
+    expect(screen.getByText('30% weight')).toBeInTheDocument()
+    expect(screen.getByText('20% weight')).toBeInTheDocument()
+    expect(screen.getByText('+1.9')).toBeInTheDocument()
+    expect(screen.getByText('-100.0')).toBeInTheDocument()
   })
 
   it('renders info buttons for the score formula, grade brackets, status thresholds, MoM trend, and chart reading guide', () => {

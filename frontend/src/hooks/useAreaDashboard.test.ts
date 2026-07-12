@@ -25,6 +25,8 @@ const DASHBOARD_RESPONSE = {
       status: 'on_track',
       mom_trend: 1.2,
       sparkline: [70, 75, 80, 82.5],
+      weight: 0.3,
+      variance: 1.9,
     },
   ],
 }

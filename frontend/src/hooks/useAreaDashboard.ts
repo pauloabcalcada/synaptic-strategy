@@ -11,6 +11,8 @@ export interface AreaDashboardKpi {
   status: 'on_track' | 'at_risk' | 'off_track'
   mom_trend: number | null
   sparkline: number[]
+  weight: number
+  variance: number
 }
 
 export interface AreaDashboardData {

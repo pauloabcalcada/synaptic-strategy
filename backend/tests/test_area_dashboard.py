@@ -112,6 +112,34 @@ async def test_dashboard_kpi_row_matches_seeded_result_for_lower_is_better_indic
     assert row["status"] == seeded["status"]
 
 
+async def test_dashboard_kpi_row_includes_weight_and_variance_for_lower_is_better_indicator(
+    migrated_test_db, db_conn, api_client
+):
+    """FIN_OCR (Operating Cost Ratio) is lower-is-better, so a result below
+    target is a favorable (positive) variance."""
+    await run()
+    area_id = await _get_area_id(db_conn, "Finance")
+
+    seeded = await db_conn.fetchrow(
+        """
+        SELECT ir.result, ir.target, id.weight
+        FROM indicator_results ir
+        JOIN indicators i ON i.id = ir.indicator_id
+        JOIN indicator_departments id ON id.indicator_id = i.id AND id.area_id = $2
+        WHERE i.code = 'FIN_OCR' AND ir.period = $1
+        """,
+        date(2024, 12, 1),
+        uuid.UUID(area_id),
+    )
+    expected_variance = float(seeded["target"]) - float(seeded["result"])
+
+    response = await api_client.get(f"/api/areas/{area_id}/dashboard")
+    row = await _kpi_row(response.json(), "FIN_OCR")
+
+    assert row["weight"] == pytest.approx(float(seeded["weight"]))
+    assert row["variance"] == pytest.approx(expected_variance)
+
+
 async def test_dashboard_kpi_row_mom_trend_is_null_for_first_period(
     migrated_test_db, db_conn, api_client
 ):

@@ -110,6 +110,7 @@ export function AreaDashboard() {
             <th className="pb-2">Result</th>
             <th className="pb-2">Target</th>
             <th className="pb-2">Score</th>
+            <th className="pb-2">Variance</th>
             <th className="pb-2">
               <span className="flex items-center gap-1">
                 Status
@@ -135,6 +136,9 @@ export function AreaDashboard() {
                 >
                   {kpi.name}
                 </Link>
+                <div className="text-xs text-muted-foreground">
+                  {Math.round(kpi.weight * 100)}% weight
+                </div>
               </td>
               <td className="py-2 font-mono">
                 {kpi.result} {kpi.unit}
@@ -143,6 +147,10 @@ export function AreaDashboard() {
                 {kpi.target} {kpi.unit}
               </td>
               <td className="py-2 font-mono">{kpi.kpi_score}</td>
+              <td className="py-2 font-mono">
+                {kpi.variance >= 0 ? "+" : ""}
+                {kpi.variance.toFixed(1)}
+              </td>
               <td className={cn("py-2", STATUS_STYLES[kpi.status])}>
                 {kpi.status}
               </td>
