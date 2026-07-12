@@ -2,12 +2,14 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
 from app.models import (
     Area,
+    AreaCommentary,
     DepartmentScore,
     Indicator,
     IndicatorDepartment,
@@ -17,6 +19,12 @@ from app.models import (
 from app.services.scoring import compute_variance
 
 router = APIRouter()
+
+
+class AreaCommentaryUpsert(BaseModel):
+    period: date
+    content: str
+    author_id: str
 
 SPARKLINE_LENGTH = 12
 
@@ -190,4 +198,70 @@ async def get_area_dashboard(
         "grade": department_score.grade,
         "score_mom_delta": score_mom_delta,
         "kpis": kpis,
+    }
+
+
+async def _get_area_or_404(session: AsyncSession, area_id: uuid.UUID) -> Area:
+    area = await session.get(Area, area_id)
+    if area is None:
+        raise HTTPException(status_code=404, detail="Area not found")
+    return area
+
+
+@router.get("/areas/{area_id}/commentary")
+async def get_area_commentary(
+    area_id: uuid.UUID,
+    period: date,
+    session: AsyncSession = Depends(get_session),
+):
+    await _get_area_or_404(session, area_id)
+
+    commentary = await session.scalar(
+        select(AreaCommentary)
+        .where(AreaCommentary.area_id == area_id)
+        .where(AreaCommentary.period == period)
+    )
+
+    return {
+        "period": period.isoformat(),
+        "content": commentary.content if commentary else None,
+        "is_ai_generated": commentary.is_ai_generated if commentary else False,
+        "author_id": commentary.author_id if commentary else None,
+    }
+
+
+@router.put("/areas/{area_id}/commentary")
+async def upsert_area_commentary(
+    area_id: uuid.UUID,
+    payload: AreaCommentaryUpsert,
+    session: AsyncSession = Depends(get_session),
+):
+    await _get_area_or_404(session, area_id)
+
+    commentary = await session.scalar(
+        select(AreaCommentary)
+        .where(AreaCommentary.area_id == area_id)
+        .where(AreaCommentary.period == payload.period)
+    )
+
+    if commentary is None:
+        commentary = AreaCommentary(
+            area_id=area_id,
+            period=payload.period,
+            content=payload.content,
+            author_id=payload.author_id,
+            is_ai_generated=False,
+        )
+        session.add(commentary)
+    else:
+        commentary.content = payload.content
+        commentary.author_id = payload.author_id
+
+    await session.commit()
+
+    return {
+        "period": payload.period.isoformat(),
+        "content": commentary.content,
+        "is_ai_generated": commentary.is_ai_generated,
+        "author_id": commentary.author_id,
     }
