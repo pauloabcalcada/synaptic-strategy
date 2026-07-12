@@ -5,15 +5,21 @@ import { MemoryRouter } from 'react-router-dom'
 import { AreaDashboard } from './AreaDashboard'
 import { useAreaDashboard } from '@/hooks/useAreaDashboard'
 import { useAreaCommentary } from '@/hooks/useAreaCommentary'
+import { useAreaAiSummary } from '@/hooks/useAreaAiSummary'
 import { useAreas } from '@/hooks/useAreas'
+import { useChat } from '@/hooks/useChat'
 import { useRoleStore } from '@/store/role-store'
 
 vi.mock('@/hooks/useAreaDashboard')
 vi.mock('@/hooks/useAreaCommentary')
+vi.mock('@/hooks/useAreaAiSummary')
 vi.mock('@/hooks/useAreas')
+vi.mock('@/hooks/useChat')
 const mockedUseAreaDashboard = vi.mocked(useAreaDashboard)
 const mockedUseAreaCommentary = vi.mocked(useAreaCommentary)
+const mockedUseAreaAiSummary = vi.mocked(useAreaAiSummary)
 const mockedUseAreas = vi.mocked(useAreas)
+const mockedUseChat = vi.mocked(useChat)
 
 const AREAS = [
   { id: 'area-1', name: 'Sales', pillar: 'Growth', score: 82.3, grade: 'B' },
@@ -64,11 +70,19 @@ function renderPage(path = '/area') {
 }
 
 const mockSaveAreaCommentary = vi.fn()
+const mockChatSend = vi.fn()
 
 beforeEach(() => {
   useRoleStore.setState({ role: 'manager', areaId: 'area-1', profileLabel: 'Sales Manager' })
   mockedUseAreas.mockReturnValue({ areas: null, loading: false, error: null })
   mockSaveAreaCommentary.mockReset()
+  mockChatSend.mockReset()
+  mockedUseAreaAiSummary.mockReturnValue({
+    data: { period: '2024-12-01', summary: null },
+    loading: false,
+    error: null,
+  })
+  mockedUseChat.mockReturnValue({ messages: [], streaming: false, send: mockChatSend })
   mockedUseAreaCommentary.mockReturnValue({
     data: null,
     loading: false,
@@ -226,5 +240,85 @@ describe('AreaDashboard', () => {
 
     expect(screen.getByRole('combobox', { name: /area/i })).toHaveValue('area-2')
     expect(mockedUseAreaDashboard).toHaveBeenCalledWith('area-2')
+  })
+
+  it('shows an empty AI Diagnostic Summary panel with an info button when there is no summary', () => {
+    mockedUseAreaDashboard.mockReturnValue({ data: DASHBOARD_DATA, loading: false, error: null })
+    mockedUseAreaAiSummary.mockReturnValue({
+      data: { period: '2024-12-01', summary: null },
+      loading: false,
+      error: null,
+    })
+
+    renderPage()
+
+    expect(screen.getByText('AI Diagnostic Summary')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /ai diagnostic summary/i })
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /chat with/i })).not.toBeInTheDocument()
+  })
+
+  it('renders the flagged KPI diagnostic and a Chat with [indicator] launcher', () => {
+    mockedUseAreaDashboard.mockReturnValue({ data: DASHBOARD_DATA, loading: false, error: null })
+    mockedUseAreaAiSummary.mockReturnValue({
+      data: {
+        period: '2024-12-01',
+        summary: {
+          indicator_code: 'GOV_REG',
+          indicator_name: 'Regulatory Filing On-Time Rate',
+          pattern: 'sudden_drop',
+          confidence: 'medium',
+          description: 'A sharp single-period dip.',
+          suggested_focus: 'Review what changed in the dip period.',
+        },
+      },
+      loading: false,
+      error: null,
+    })
+
+    renderPage()
+
+    expect(screen.getByText('sudden_drop')).toBeInTheDocument()
+    expect(screen.getByText('medium')).toBeInTheDocument()
+    expect(screen.getByText('A sharp single-period dip.')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /chat with regulatory filing on-time rate/i })
+    ).toBeInTheDocument()
+  })
+
+  it('opens the chat drawer scoped to the flagged KPI when the launcher is clicked', async () => {
+    const user = userEvent.setup()
+    mockedUseAreaDashboard.mockReturnValue({ data: DASHBOARD_DATA, loading: false, error: null })
+    mockedUseAreaAiSummary.mockReturnValue({
+      data: {
+        period: '2024-12-01',
+        summary: {
+          indicator_code: 'GOV_REG',
+          indicator_name: 'Regulatory Filing On-Time Rate',
+          pattern: 'sudden_drop',
+          confidence: 'medium',
+          description: 'A sharp single-period dip.',
+          suggested_focus: 'Review what changed in the dip period.',
+        },
+      },
+      loading: false,
+      error: null,
+    })
+
+    renderPage()
+    await user.click(
+      screen.getByRole('button', { name: /chat with regulatory filing on-time rate/i })
+    )
+
+    expect(
+      screen.getByRole('heading', { name: /chat with regulatory filing on-time rate/i })
+    ).toBeInTheDocument()
+
+    const input = screen.getByRole('textbox', { name: /ask a question/i })
+    await user.type(input, 'Why did this drop?')
+    await user.click(screen.getByRole('button', { name: /^send$/i }))
+
+    expect(mockChatSend).toHaveBeenCalledWith('Why did this drop?')
   })
 })

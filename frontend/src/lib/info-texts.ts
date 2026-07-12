@@ -71,6 +71,11 @@ export const infoTexts = {
     body: 'A manager can record a note about this area’s overall performance for the viewed period, separate from any individual KPI’s commentary. Notes are per period and can be edited at any time.',
     mode: 'tooltip',
   },
+  areaAiSummaryPanel: {
+    title: 'AI Diagnostic Summary',
+    body: 'Surfaces the AI diagnostic already generated for this area’s most severe off-track KPI, so you can see what needs attention without opening every indicator. If no KPI in this area is off track, or no diagnostic has been generated yet, this panel is empty.',
+    mode: 'tooltip',
+  },
   graphEdgeDirection: {
     title: 'Reading directed edges',
     body: 'An arrow points from an upstream (cause) KPI to the downstream (effect) KPI it influences. Nodes are grouped into department columns, so it is the arrow itself — not left-right position — that shows which KPI drives which.',
