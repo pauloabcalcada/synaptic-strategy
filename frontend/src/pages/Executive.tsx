@@ -87,6 +87,7 @@ function Heatmap({ rows }: { rows: ExecutiveOverviewHeatmapRow[] }) {
                   <td className="sticky left-0 z-10 bg-background py-1 pr-4">{row.name}</td>
                   {periods.map((period) => {
                     const cell = cellsByPeriod.get(period);
+                    const roundedScore = cell ? Math.round(cell.score) : null;
                     return (
                       <td key={period} className="px-1 py-1">
                         <div
@@ -94,9 +95,9 @@ function Heatmap({ rows }: { rows: ExecutiveOverviewHeatmapRow[] }) {
                             "flex min-w-16 items-center justify-center rounded-md py-3 font-mono text-sm font-bold",
                             cell ? (GRADE_STYLES[cell.grade] ?? "bg-muted") : "bg-transparent"
                           )}
-                          title={cell ? `${cell.period}: ${cell.grade} (${cell.score})` : "No data"}
+                          title={cell ? `${cell.period}: ${cell.grade} (${roundedScore})` : "No data"}
                         >
-                          {cell ? cell.score : ""}
+                          {roundedScore ?? ""}
                         </div>
                       </td>
                     );
