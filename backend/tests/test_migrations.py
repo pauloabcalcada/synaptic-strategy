@@ -23,6 +23,7 @@ EXPECTED_TABLES = {
     "indicator_results",
     "department_scores",
     "commentaries",
+    "area_commentaries",
     "action_plans",
     "ai_diagnostics",
     "rag_documents",

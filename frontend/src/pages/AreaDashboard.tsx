@@ -1,11 +1,22 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { useAreaDashboard } from "@/hooks/useAreaDashboard";
+import { useAreaCommentary } from "@/hooks/useAreaCommentary";
 import { useAreas } from "@/hooks/useAreas";
 import { useRoleStore } from "@/store/role-store";
 import { InfoButton } from "@/components/ui/info-button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+const areaCommentaryFormSchema = z.object({
+  content: z.string(),
+});
+
+type AreaCommentaryFormValues = z.infer<typeof areaCommentaryFormSchema>;
 
 const STATUS_STYLES: Record<string, string> = {
   on_track: "text-success",
@@ -35,6 +46,8 @@ function Sparkline({ values }: { values: number[] }) {
 export function AreaDashboard() {
   const role = useRoleStore((state) => state.role);
   const ownAreaId = useRoleStore((state) => state.areaId);
+  const profileLabel = useRoleStore((state) => state.profileLabel);
+  const author = profileLabel ?? role ?? "";
   const canBrowseAreas = role !== "manager";
   const { areas } = useAreas(canBrowseAreas);
   const [searchParams] = useSearchParams();
@@ -44,6 +57,19 @@ export function AreaDashboard() {
     ? (selectedAreaId ?? requestedAreaId ?? areas?.[0]?.id ?? null)
     : ownAreaId;
   const { data, loading, error } = useAreaDashboard(areaId ?? "");
+  const {
+    data: areaCommentary,
+    save: saveAreaCommentary,
+  } = useAreaCommentary(areaId ?? "", data?.period);
+
+  const areaCommentaryForm = useForm<AreaCommentaryFormValues>({
+    resolver: zodResolver(areaCommentaryFormSchema),
+    values: { content: areaCommentary?.content ?? "" },
+  });
+
+  async function onSubmitAreaCommentary(values: AreaCommentaryFormValues) {
+    await saveAreaCommentary(values.content, author);
+  }
 
   const areaPicker = canBrowseAreas && areas && areas.length > 0 && (
     <label className="flex items-center gap-2 text-sm">
@@ -166,6 +192,30 @@ export function AreaDashboard() {
           ))}
         </tbody>
       </table>
+
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={areaCommentaryForm.handleSubmit(onSubmitAreaCommentary)}
+      >
+        <div className="flex items-center gap-1">
+          <label htmlFor="area-commentary-content" className="text-sm text-muted-foreground">
+            Monthly Commentary
+          </label>
+          <InfoButton textKey="areaCommentaryPanel" />
+        </div>
+        <textarea
+          id="area-commentary-content"
+          className="min-h-24 rounded-lg border border-border bg-background p-2 text-sm"
+          {...areaCommentaryForm.register("content")}
+        />
+        <Button
+          type="submit"
+          className="self-start"
+          disabled={areaCommentaryForm.formState.isSubmitting}
+        >
+          Save commentary
+        </Button>
+      </form>
     </div>
   );
 }

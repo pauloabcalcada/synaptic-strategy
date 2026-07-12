@@ -66,6 +66,11 @@ export const infoTexts = {
     body: 'A manager can record a note about this indicator for the viewed period. Notes are per period and can be edited at any time.',
     mode: 'tooltip',
   },
+  areaCommentaryPanel: {
+    title: 'Monthly Commentary',
+    body: 'A manager can record a note about this area’s overall performance for the viewed period, separate from any individual KPI’s commentary. Notes are per period and can be edited at any time.',
+    mode: 'tooltip',
+  },
   graphEdgeDirection: {
     title: 'Reading directed edges',
     body: 'An arrow points from an upstream (cause) KPI to the downstream (effect) KPI it influences. Nodes are grouped into department columns, so it is the arrow itself — not left-right position — that shows which KPI drives which.',

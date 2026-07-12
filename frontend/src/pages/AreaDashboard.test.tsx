@@ -4,12 +4,15 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { AreaDashboard } from './AreaDashboard'
 import { useAreaDashboard } from '@/hooks/useAreaDashboard'
+import { useAreaCommentary } from '@/hooks/useAreaCommentary'
 import { useAreas } from '@/hooks/useAreas'
 import { useRoleStore } from '@/store/role-store'
 
 vi.mock('@/hooks/useAreaDashboard')
+vi.mock('@/hooks/useAreaCommentary')
 vi.mock('@/hooks/useAreas')
 const mockedUseAreaDashboard = vi.mocked(useAreaDashboard)
+const mockedUseAreaCommentary = vi.mocked(useAreaCommentary)
 const mockedUseAreas = vi.mocked(useAreas)
 
 const AREAS = [
@@ -60,9 +63,18 @@ function renderPage(path = '/area') {
   )
 }
 
+const mockSaveAreaCommentary = vi.fn()
+
 beforeEach(() => {
   useRoleStore.setState({ role: 'manager', areaId: 'area-1', profileLabel: 'Sales Manager' })
   mockedUseAreas.mockReturnValue({ areas: null, loading: false, error: null })
+  mockSaveAreaCommentary.mockReset()
+  mockedUseAreaCommentary.mockReturnValue({
+    data: null,
+    loading: false,
+    error: null,
+    save: mockSaveAreaCommentary,
+  })
 })
 
 describe('AreaDashboard', () => {
@@ -182,6 +194,27 @@ describe('AreaDashboard', () => {
       'href',
       '/indicator?code=FIN_OCR&areaId=area-2'
     )
+  })
+
+  it('shows the Monthly Commentary panel with an info button and persists on save', async () => {
+    const user = userEvent.setup()
+    mockedUseAreaDashboard.mockReturnValue({ data: DASHBOARD_DATA, loading: false, error: null })
+    mockedUseAreaCommentary.mockReturnValue({
+      data: { period: '2024-12-01', content: '', is_ai_generated: false, author_id: null },
+      loading: false,
+      error: null,
+      save: mockSaveAreaCommentary,
+    })
+
+    renderPage()
+
+    expect(screen.getByText('Monthly Commentary')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /monthly commentary/i }).length).toBeGreaterThan(0)
+
+    await user.type(document.getElementById('area-commentary-content')!, 'Great quarter overall.')
+    await user.click(screen.getByRole('button', { name: /save commentary/i }))
+
+    expect(mockSaveAreaCommentary).toHaveBeenCalledWith('Great quarter overall.', 'Sales Manager')
   })
 
   it('preselects the area from an ?id= query param (e.g. arriving from the Executive Overview)', () => {

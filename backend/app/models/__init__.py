@@ -6,6 +6,7 @@ from app.models.indicator_department import IndicatorDepartment
 from app.models.indicator_result import IndicatorResult
 from app.models.department_score import DepartmentScore
 from app.models.commentary import Commentary
+from app.models.area_commentary import AreaCommentary
 from app.models.action_plan import ActionPlan
 from app.models.ai_diagnostic import AiDiagnostic
 from app.models.rag_document import RagDocument
@@ -19,6 +20,7 @@ __all__ = [
     "IndicatorResult",
     "DepartmentScore",
     "Commentary",
+    "AreaCommentary",
     "ActionPlan",
     "AiDiagnostic",
     "RagDocument",
