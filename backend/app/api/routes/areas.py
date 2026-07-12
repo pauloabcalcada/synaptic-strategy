@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
 from app.models import (
+    AiDiagnostic,
     Area,
     AreaCommentary,
     DepartmentScore,
@@ -206,6 +207,49 @@ async def _get_area_or_404(session: AsyncSession, area_id: uuid.UUID) -> Area:
     if area is None:
         raise HTTPException(status_code=404, detail="Area not found")
     return area
+
+
+@router.get("/areas/{area_id}/ai-summary")
+async def get_area_ai_summary(
+    area_id: uuid.UUID,
+    period: date,
+    session: AsyncSession = Depends(get_session),
+):
+    await _get_area_or_404(session, area_id)
+
+    most_severe_off_track = await session.execute(
+        select(Indicator)
+        .join(IndicatorDepartment, IndicatorDepartment.indicator_id == Indicator.id)
+        .join(IndicatorResult, IndicatorResult.indicator_id == Indicator.id)
+        .where(IndicatorDepartment.area_id == area_id)
+        .where(IndicatorResult.period == period)
+        .where(IndicatorResult.status == "off_track")
+        .order_by(IndicatorResult.kpi_score.asc())
+        .limit(1)
+    )
+    indicator = most_severe_off_track.scalar()
+
+    summary = None
+    if indicator is not None:
+        diagnostic = await session.scalar(
+            select(AiDiagnostic)
+            .where(AiDiagnostic.indicator_id == indicator.id)
+            .where(AiDiagnostic.period == period)
+        )
+        if diagnostic is not None:
+            summary = {
+                "indicator_code": indicator.code,
+                "indicator_name": indicator.name,
+                "pattern": diagnostic.pattern,
+                "confidence": diagnostic.confidence,
+                "description": diagnostic.description,
+                "suggested_focus": diagnostic.suggested_focus,
+            }
+
+    return {
+        "period": period.isoformat(),
+        "summary": summary,
+    }
 
 
 @router.get("/areas/{area_id}/commentary")

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,10 +6,13 @@ import { z } from "zod";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { useAreaDashboard } from "@/hooks/useAreaDashboard";
 import { useAreaCommentary } from "@/hooks/useAreaCommentary";
+import { useAreaAiSummary } from "@/hooks/useAreaAiSummary";
 import { useAreas } from "@/hooks/useAreas";
+import { useChat } from "@/hooks/useChat";
 import { useRoleStore } from "@/store/role-store";
 import { InfoButton } from "@/components/ui/info-button";
 import { Button } from "@/components/ui/button";
+import { AIPanel } from "@/components/ui/ai-panel";
 import { cn } from "@/lib/utils";
 
 const areaCommentaryFormSchema = z.object({
@@ -61,6 +64,11 @@ export function AreaDashboard() {
     data: areaCommentary,
     save: saveAreaCommentary,
   } = useAreaCommentary(areaId ?? "", data?.period);
+  const { data: areaAiSummary } = useAreaAiSummary(areaId ?? "", data?.period);
+  const flaggedKpi = areaAiSummary?.summary ?? null;
+  const chat = useChat(flaggedKpi?.indicator_code ?? "", role ?? "");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
 
   const areaCommentaryForm = useForm<AreaCommentaryFormValues>({
     resolver: zodResolver(areaCommentaryFormSchema),
@@ -69,6 +77,16 @@ export function AreaDashboard() {
 
   async function onSubmitAreaCommentary(values: AreaCommentaryFormValues) {
     await saveAreaCommentary(values.content, author);
+  }
+
+  async function onSubmitChat(event: FormEvent) {
+    event.preventDefault();
+    if (!chatInput.trim()) {
+      return;
+    }
+    const content = chatInput;
+    setChatInput("");
+    await chat.send(content);
   }
 
   const areaPicker = canBrowseAreas && areas && areas.length > 0 && (
@@ -193,29 +211,107 @@ export function AreaDashboard() {
         </tbody>
       </table>
 
-      <form
-        className="flex flex-col gap-2"
-        onSubmit={areaCommentaryForm.handleSubmit(onSubmitAreaCommentary)}
-      >
-        <div className="flex items-center gap-1">
-          <label htmlFor="area-commentary-content" className="text-sm text-muted-foreground">
-            Monthly Commentary
-          </label>
-          <InfoButton textKey="areaCommentaryPanel" />
+      {chatOpen && flaggedKpi && (
+        <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col gap-4 overflow-y-auto border-l border-border bg-background p-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Chat with {flaggedKpi.indicator_name}</h2>
+            <Button type="button" variant="ghost" onClick={() => setChatOpen(false)}>
+              Close
+            </Button>
+          </div>
+          <AIPanel>
+            <div className="flex flex-col gap-3 text-sm">
+              {chat.messages.map((message, index) => (
+                <p
+                  key={index}
+                  className={cn(
+                    message.role === "user"
+                      ? "self-end text-right text-foreground"
+                      : "self-start text-muted-foreground"
+                  )}
+                >
+                  {message.content}
+                </p>
+              ))}
+            </div>
+            <form className="flex gap-2 pt-3" onSubmit={onSubmitChat}>
+              <label className="sr-only" htmlFor="area-chat-input">
+                Ask a question
+              </label>
+              <input
+                id="area-chat-input"
+                className="flex-1 rounded-lg border border-border bg-background p-2 text-sm"
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+              />
+              <Button type="submit" disabled={chat.streaming}>
+                Send
+              </Button>
+            </form>
+          </AIPanel>
         </div>
-        <textarea
-          id="area-commentary-content"
-          className="min-h-24 rounded-lg border border-border bg-background p-2 text-sm"
-          {...areaCommentaryForm.register("content")}
-        />
-        <Button
-          type="submit"
-          className="self-start"
-          disabled={areaCommentaryForm.formState.isSubmitting}
+      )}
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={areaCommentaryForm.handleSubmit(onSubmitAreaCommentary)}
         >
-          Save commentary
-        </Button>
-      </form>
+          <div className="flex items-center gap-1">
+            <label htmlFor="area-commentary-content" className="text-sm text-muted-foreground">
+              Monthly Commentary
+            </label>
+            <InfoButton textKey="areaCommentaryPanel" />
+          </div>
+          <textarea
+            id="area-commentary-content"
+            className="min-h-24 rounded-lg border border-border bg-background p-2 text-sm"
+            {...areaCommentaryForm.register("content")}
+          />
+          <Button
+            type="submit"
+            className="self-start"
+            disabled={areaCommentaryForm.formState.isSubmitting}
+          >
+            Save commentary
+          </Button>
+        </form>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-muted-foreground">AI Diagnostic Summary</span>
+            <InfoButton textKey="areaAiSummaryPanel" />
+          </div>
+          {flaggedKpi ? (
+            <AIPanel>
+              <div className="flex flex-col gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Pattern</span>
+                  <span className="font-medium">{flaggedKpi.pattern}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Confidence</span>
+                  <span className="font-medium">{flaggedKpi.confidence}</span>
+                </div>
+                <p>{flaggedKpi.description}</p>
+                <p className="text-muted-foreground">{flaggedKpi.suggested_focus}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="self-start"
+                  onClick={() => setChatOpen(true)}
+                >
+                  Chat with {flaggedKpi.indicator_name}
+                </Button>
+              </div>
+            </AIPanel>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No AI diagnostic available for this area right now.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
