@@ -68,12 +68,12 @@ export const infoTexts = {
   },
   graphEdgeDirection: {
     title: 'Reading directed edges',
-    body: 'An arrow points from an upstream (cause) KPI to the downstream (effect) KPI it influences. The graph is laid out left to right, so causes generally sit to the left of the effects they drive.',
+    body: 'An arrow points from an upstream (cause) KPI to the downstream (effect) KPI it influences. Nodes are grouped into department columns, so it is the arrow itself — not left-right position — that shows which KPI drives which.',
     mode: 'tooltip',
   },
   graphNodeEncoding: {
     title: 'Node encoding',
-    body: 'Node fill color shows the owning department. Node border color shows the KPI’s current department grade (A–D). Node size scales with the KPI’s weight — its contribution to its department’s score.',
+    body: 'Node border color shows the owning department, matching its column. Node fill intensity shows the KPI’s current department grade (A–D) — a deeper fill means a higher grade. Node size scales with the KPI’s weight — its contribution to its department’s score.',
     mode: 'tooltip',
   },
   graphRelationshipLabels: {

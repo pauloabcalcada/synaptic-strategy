@@ -26,13 +26,13 @@ const DEPARTMENT_COLORS: Record<string, string> = {
 };
 const DEFAULT_DEPARTMENT_COLOR = "var(--muted-foreground)";
 
-const GRADE_BORDER_COLORS: Record<string, string> = {
-  A: "var(--success)",
-  B: "var(--primary)",
-  C: "var(--warning)",
-  D: "var(--destructive)",
+const GRADE_FILL_INTENSITY: Record<string, number> = {
+  A: 90,
+  B: 65,
+  C: 40,
+  D: 20,
 };
-const DEFAULT_GRADE_COLOR = "var(--border-strong)";
+const DEFAULT_GRADE_FILL_INTENSITY = 50;
 
 const EDGE_RELATIONSHIP_STYLES: Record<string, { stroke: string; strokeDasharray?: string }> = {
   enables: { stroke: "var(--chart-3)", strokeDasharray: "2 4" },
@@ -46,9 +46,9 @@ const BASE_NODE_HEIGHT = 52;
 const NODE_WIDTH_PER_WEIGHT = 100;
 const NODE_HEIGHT_PER_WEIGHT = 30;
 
-const GROUP_PADDING_X = 32;
-const GROUP_PADDING_TOP = 48;
-const GROUP_PADDING_BOTTOM = 24;
+const COLUMN_GAP = 120;
+const ROW_GAP = 40;
+const COLUMN_HEADER_HEIGHT = 56;
 
 function nodeDimensions(weight: number) {
   return {
@@ -70,16 +70,18 @@ function asKpiNodeData(data: NodeProps["data"]): StrategyGraphNode {
 function KpiNode({ data }: NodeProps) {
   const node = asKpiNodeData(data);
   const { width, height } = nodeDimensions(node.weight);
+  const departmentColor = DEPARTMENT_COLORS[node.department] ?? DEFAULT_DEPARTMENT_COLOR;
+  const fillIntensity = GRADE_FILL_INTENSITY[node.grade] ?? DEFAULT_GRADE_FILL_INTENSITY;
 
   return (
     <div
       style={{
         width,
         height,
-        backgroundColor: DEPARTMENT_COLORS[node.department] ?? DEFAULT_DEPARTMENT_COLOR,
-        borderColor: GRADE_BORDER_COLORS[node.grade] ?? DEFAULT_GRADE_COLOR,
+        backgroundColor: `color-mix(in srgb, ${departmentColor} ${fillIntensity}%, var(--background))`,
+        borderColor: departmentColor,
       }}
-      className="relative flex h-full w-full flex-col items-center justify-center rounded-lg border-4 px-2 text-center text-xs font-medium text-background"
+      className="relative flex h-full w-full flex-col items-center justify-center rounded-lg border-4 px-2 text-center text-xs font-medium text-foreground"
     >
       <Handle type="target" position={Position.Left} />
       {node.active_diagnostic && (
@@ -98,97 +100,104 @@ function KpiNode({ data }: NodeProps) {
   );
 }
 
-function DepartmentGroupNode({ data }: NodeProps) {
-  const { department, width, height } = data as unknown as {
-    department: string;
-    width: number;
-    height: number;
-  };
+function DepartmentColumnHeader({ data }: NodeProps) {
+  const { department, width } = data as unknown as { department: string; width: number };
   const color = DEPARTMENT_COLORS[department] ?? DEFAULT_DEPARTMENT_COLOR;
 
   return (
     <div
-      style={{ width, height, borderColor: color }}
-      className="pointer-events-none relative h-full w-full rounded-xl border-2 border-dashed"
+      style={{ width, height: COLUMN_HEADER_HEIGHT - 16, color, borderColor: color }}
+      className="pointer-events-none flex items-end justify-center border-b-2 pb-2 text-sm font-semibold"
     >
-      <span
-        style={{ color, borderColor: color }}
-        className="absolute -top-3 left-3 rounded-full border bg-background px-2 py-0.5 text-xs font-semibold"
-      >
-        {department}
-      </span>
+      {department}
     </div>
   );
 }
 
-const NODE_TYPES = { kpiNode: KpiNode, departmentGroup: DepartmentGroupNode };
+const NODE_TYPES = { kpiNode: KpiNode, departmentColumnHeader: DepartmentColumnHeader };
 
 function layoutGraph(
   nodes: StrategyGraphNode[],
   edges: { source: string; target: string; label: string }[]
 ): { flowNodes: Node[]; flowEdges: Edge[] } {
+  // Rank nodes causally (upstream -> downstream) so each department column still
+  // reads top-to-bottom in roughly cause-then-effect order.
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({ rankdir: "LR", nodesep: 40, ranksep: 100 });
   graph.setDefaultEdgeLabel(() => ({}));
-
   for (const node of nodes) {
-    const { width, height } = nodeDimensions(node.weight);
-    graph.setNode(node.id, { width, height });
+    graph.setNode(node.id, nodeDimensions(node.weight));
   }
   for (const edge of edges) {
     graph.setEdge(edge.source, edge.target);
   }
-
   dagre.layout(graph);
+  const causalRank = new Map(nodes.map((node) => [node.id, graph.node(node.id).x]));
 
-  const kpiFlowNodes: Node[] = nodes.map((node) => {
-    const { width, height } = nodeDimensions(node.weight);
-    const position = graph.node(node.id);
-    return {
-      id: node.id,
-      type: "kpiNode",
-      data: { ...node },
-      position: { x: position.x - width / 2, y: position.y - height / 2 },
-    };
-  });
+  const departmentOrder = [
+    ...Object.keys(DEPARTMENT_COLORS).filter((department) =>
+      nodes.some((node) => node.department === department)
+    ),
+    ...Array.from(new Set(nodes.map((node) => node.department))).filter(
+      (department) => !(department in DEPARTMENT_COLORS)
+    ),
+  ];
 
-  const groupsByDepartment = new Map<
-    string,
-    { minX: number; minY: number; maxX: number; maxY: number }
-  >();
-  for (const flowNode of kpiFlowNodes) {
-    const { department, weight } = asKpiNodeData(flowNode.data);
-    const { width, height } = nodeDimensions(weight);
-    const bounds = groupsByDepartment.get(department);
-    const minX = flowNode.position.x;
-    const minY = flowNode.position.y;
-    const maxX = flowNode.position.x + width;
-    const maxY = flowNode.position.y + height;
-    if (!bounds) {
-      groupsByDepartment.set(department, { minX, minY, maxX, maxY });
-    } else {
-      bounds.minX = Math.min(bounds.minX, minX);
-      bounds.minY = Math.min(bounds.minY, minY);
-      bounds.maxX = Math.max(bounds.maxX, maxX);
-      bounds.maxY = Math.max(bounds.maxY, maxY);
-    }
+  const nodesByDepartment = new Map<string, StrategyGraphNode[]>(
+    departmentOrder.map((department) => [department, []])
+  );
+  for (const node of nodes) {
+    nodesByDepartment.get(node.department)?.push(node);
+  }
+  for (const departmentNodes of nodesByDepartment.values()) {
+    departmentNodes.sort(
+      (a, b) => (causalRank.get(a.id) ?? 0) - (causalRank.get(b.id) ?? 0)
+    );
   }
 
-  const groupFlowNodes: Node[] = Array.from(groupsByDepartment.entries()).map(
-    ([department, bounds]) => ({
-      id: `group-${department}`,
-      type: "departmentGroup",
-      data: {
-        department,
-        width: bounds.maxX - bounds.minX + GROUP_PADDING_X * 2,
-        height: bounds.maxY - bounds.minY + GROUP_PADDING_TOP + GROUP_PADDING_BOTTOM,
-      },
-      position: { x: bounds.minX - GROUP_PADDING_X, y: bounds.minY - GROUP_PADDING_TOP },
+  const columnWidths = new Map(
+    departmentOrder.map((department) => [
+      department,
+      Math.max(
+        BASE_NODE_WIDTH,
+        ...nodesByDepartment.get(department)!.map((node) => nodeDimensions(node.weight).width)
+      ),
+    ])
+  );
+
+  const columnX = new Map<string, number>();
+  let x = 0;
+  for (const department of departmentOrder) {
+    columnX.set(department, x);
+    x += columnWidths.get(department)! + COLUMN_GAP;
+  }
+
+  const kpiFlowNodes: Node[] = [];
+  const headerFlowNodes: Node[] = [];
+  for (const department of departmentOrder) {
+    const colX = columnX.get(department)!;
+    const colWidth = columnWidths.get(department)!;
+    headerFlowNodes.push({
+      id: `column-header-${department}`,
+      type: "departmentColumnHeader",
+      data: { department, width: colWidth },
+      position: { x: colX, y: 0 },
       draggable: false,
       selectable: false,
-      zIndex: -1,
-    })
-  );
+    });
+
+    let y = COLUMN_HEADER_HEIGHT;
+    for (const node of nodesByDepartment.get(department)!) {
+      const { width, height } = nodeDimensions(node.weight);
+      kpiFlowNodes.push({
+        id: node.id,
+        type: "kpiNode",
+        data: { ...node },
+        position: { x: colX + (colWidth - width) / 2, y },
+      });
+      y += height + ROW_GAP;
+    }
+  }
 
   const flowEdges: Edge[] = edges.map((edge, index) => {
     const style = EDGE_RELATIONSHIP_STYLES[edge.label] ?? DEFAULT_EDGE_STYLE;
@@ -202,7 +211,7 @@ function layoutGraph(
     };
   });
 
-  return { flowNodes: [...groupFlowNodes, ...kpiFlowNodes], flowEdges };
+  return { flowNodes: [...headerFlowNodes, ...kpiFlowNodes], flowEdges };
 }
 
 function NodeHoverCard({ node, x, y }: HoverState) {
