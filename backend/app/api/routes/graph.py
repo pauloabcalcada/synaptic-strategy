@@ -3,7 +3,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
-from app.models import Area, DepartmentScore, Indicator, IndicatorDepartment, IndicatorResult
+from app.models import (
+    AiDiagnostic,
+    Area,
+    DepartmentScore,
+    Indicator,
+    IndicatorDepartment,
+    IndicatorResult,
+)
 
 router = APIRouter()
 
@@ -34,6 +41,11 @@ async def _node_payload(
         .where(IndicatorResult.indicator_id == indicator.id)
         .where(IndicatorResult.period == latest_period)
     )
+    diagnostic = await session.scalar(
+        select(AiDiagnostic)
+        .where(AiDiagnostic.indicator_id == indicator.id)
+        .where(AiDiagnostic.period == latest_period)
+    )
 
     return {
         "id": indicator.code,
@@ -44,6 +56,7 @@ async def _node_payload(
         "weight": float(indicator_department.weight),
         "result": float(result_row.result),
         "target": float(result_row.target),
+        "active_diagnostic": diagnostic is not None,
     }
 
 

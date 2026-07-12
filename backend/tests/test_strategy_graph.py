@@ -1,5 +1,7 @@
 """Seam: GET /api/graph/strategy-map HTTP endpoint, against the real seeded DB."""
 
+import uuid
+
 import pytest
 
 from app.seed.run import run
@@ -60,3 +62,32 @@ async def test_strategy_map_node_carries_department_grade_weight_result_target(
     assert node["score"] == pytest.approx(float(seeded["score"]))
     assert node["result"] == pytest.approx(float(seeded["result"]))
     assert node["target"] == pytest.approx(float(seeded["target"]))
+
+
+async def test_strategy_map_flags_active_diagnostic_for_latest_period_only(
+    migrated_test_db, db_conn, api_client
+):
+    await run()
+
+    latest_period = await db_conn.fetchval("SELECT max(period) FROM indicator_results")
+    indicator_id = await db_conn.fetchval(
+        "SELECT id FROM indicators WHERE code = 'FIN_OCR'"
+    )
+    await db_conn.execute(
+        """
+        INSERT INTO ai_diagnostics (id, indicator_id, period, pattern, confidence, description, suggested_focus)
+        VALUES ($1, $2, $3, 'sudden_drop', 'high', 'seeded for test', 'seeded for test')
+        """,
+        uuid.uuid4(),
+        indicator_id,
+        latest_period,
+    )
+
+    response = await api_client.get("/api/graph/strategy-map")
+    body = response.json()
+
+    diagnosed_node = next(node for node in body["nodes"] if node["id"] == "FIN_OCR")
+    other_nodes = [node for node in body["nodes"] if node["id"] != "FIN_OCR"]
+
+    assert diagnosed_node["active_diagnostic"] is True
+    assert all(node["active_diagnostic"] is False for node in other_nodes)

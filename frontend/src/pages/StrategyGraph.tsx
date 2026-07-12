@@ -58,9 +58,19 @@ function KpiNode({ data }: NodeProps) {
         backgroundColor: DEPARTMENT_COLORS[node.department] ?? DEFAULT_DEPARTMENT_COLOR,
         borderColor: GRADE_BORDER_COLORS[node.grade] ?? DEFAULT_GRADE_COLOR,
       }}
-      className="flex h-full w-full flex-col items-center justify-center rounded-lg border-4 px-2 text-center text-xs font-medium text-background"
+      className="relative flex h-full w-full flex-col items-center justify-center rounded-lg border-4 px-2 text-center text-xs font-medium text-background"
     >
       <Handle type="target" position={Position.Left} />
+      {node.active_diagnostic && (
+        <span
+          role="img"
+          aria-label="Active AI diagnostic"
+          title="Active AI diagnostic"
+          className="absolute -top-2 -right-2 text-base leading-none"
+        >
+          ⚠️
+        </span>
+      )}
       {node.label}
       <Handle type="source" position={Position.Right} />
     </div>

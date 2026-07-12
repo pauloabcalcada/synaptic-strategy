@@ -26,6 +26,7 @@ const GRAPH_DATA = {
       weight: 0.3,
       result: 60.1,
       target: 62.0,
+      active_diagnostic: true,
     },
     {
       id: 'FIN_EBITDA',
@@ -36,6 +37,7 @@ const GRAPH_DATA = {
       weight: 0.2,
       result: 19.1,
       target: 18.0,
+      active_diagnostic: false,
     },
   ],
   edges: [{ source: 'FIN_OCR', target: 'FIN_EBITDA', label: 'impacts' }],
@@ -84,5 +86,13 @@ describe('StrategyGraph', () => {
     expect(screen.getByRole('button', { name: /reading directed edges/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /node encoding/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /relationship labels/i })).toBeInTheDocument()
+  })
+
+  it('renders a warning glyph only on nodes with an active diagnostic', () => {
+    mockedUseStrategyGraph.mockReturnValue({ data: GRAPH_DATA, loading: false, error: null })
+
+    renderPage()
+
+    expect(screen.getAllByTitle('Active AI diagnostic')).toHaveLength(1)
   })
 })
