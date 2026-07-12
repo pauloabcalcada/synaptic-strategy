@@ -68,7 +68,7 @@ function Heatmap({ rows }: { rows: ExecutiveOverviewHeatmapRow[] }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="w-full overflow-x-auto">
-        <table className="text-left text-sm">
+        <table className={cn("text-left text-sm", !expanded && "w-full")}>
           <thead className="text-muted-foreground">
             <tr>
               <th className="sticky left-0 z-10 bg-background pb-2 pr-4">Area</th>

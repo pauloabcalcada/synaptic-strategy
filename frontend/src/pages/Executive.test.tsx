@@ -152,4 +152,18 @@ describe('Executive', () => {
     // last of the 6 default periods for Finance (periodIndex 8 -> score 78)
     expect(screen.getByText('78')).toBeInTheDocument()
   })
+
+  it('stretches the default 6-period heatmap to the full page width but not the expanded view', async () => {
+    const user = userEvent.setup()
+    mockedUseExecutiveOverview.mockReturnValue({ data: OVERVIEW_DATA, loading: false, error: null })
+
+    renderPage()
+
+    const table = screen.getByRole('table')
+    expect(table.className).toMatch(/\bw-full\b/)
+
+    await user.click(screen.getByRole('button', { name: /show full history/i }))
+
+    expect(table.className).not.toMatch(/\bw-full\b/)
+  })
 })
