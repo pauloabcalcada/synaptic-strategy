@@ -44,6 +44,15 @@ def score_to_grade(score: float) -> str:
     return "D"
 
 
+def compute_variance(
+    result: float,
+    target: float,
+    polarity: str,
+) -> float:
+    diff = result - target
+    return diff if polarity == "higher_is_better" else -diff
+
+
 def compute_status(
     result: float,
     target: float,

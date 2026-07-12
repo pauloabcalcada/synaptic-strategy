@@ -14,6 +14,7 @@ from app.models import (
     IndicatorResult,
     StrategicPillar,
 )
+from app.services.scoring import compute_variance
 
 router = APIRouter()
 
@@ -26,7 +27,9 @@ async def _resolve_period(session: AsyncSession, period: date | None) -> date:
     return await session.scalar(select(func.max(IndicatorResult.period)))
 
 
-async def _kpi_row(session: AsyncSession, indicator: Indicator, period: date) -> dict:
+async def _kpi_row(
+    session: AsyncSession, indicator: Indicator, weight: float, period: date
+) -> dict:
     current = await session.scalar(
         select(IndicatorResult)
         .where(IndicatorResult.indicator_id == indicator.id)
@@ -64,6 +67,10 @@ async def _kpi_row(session: AsyncSession, indicator: Indicator, period: date) ->
         "status": current.status,
         "mom_trend": mom_trend,
         "sparkline": sparkline,
+        "weight": weight,
+        "variance": compute_variance(
+            float(current.result), float(current.target), indicator.polarity
+        ),
     }
 
 
@@ -165,14 +172,17 @@ async def get_area_dashboard(
         else None
     )
 
-    indicators = (
-        await session.scalars(
-            select(Indicator)
+    indicator_rows = (
+        await session.execute(
+            select(Indicator, IndicatorDepartment.weight)
             .join(IndicatorDepartment, IndicatorDepartment.indicator_id == Indicator.id)
             .where(IndicatorDepartment.area_id == area_id)
         )
     ).all()
-    kpis = [await _kpi_row(session, indicator, resolved_period) for indicator in indicators]
+    kpis = [
+        await _kpi_row(session, indicator, float(weight), resolved_period)
+        for indicator, weight in indicator_rows
+    ]
 
     return {
         "period": department_score.period.isoformat(),

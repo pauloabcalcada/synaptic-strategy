@@ -6,6 +6,7 @@ from app.services.scoring import (
     compute_department_score,
     compute_kpi_score,
     compute_status,
+    compute_variance,
     score_to_grade,
 )
 
@@ -195,3 +196,32 @@ class TestComputeStatus:
     def test_lower_is_better_off_track_far_above_target(self):
         # result = 130, target = 100 → achievement_ratio = 100/130 ≈ 0.769 → off_track
         assert compute_status(130, 100, "lower_is_better", 0.10) == "off_track"
+
+
+# ---------------------------------------------------------------------------
+# compute_variance
+# ---------------------------------------------------------------------------
+#
+# Variance is signed so that positive always means "favorable" — beating
+# target — regardless of polarity.
+
+
+class TestComputeVariance:
+    def test_higher_is_better_beats_target_is_positive(self):
+        assert compute_variance(110, 100, "higher_is_better") == pytest.approx(10.0)
+
+    def test_higher_is_better_misses_target_is_negative(self):
+        assert compute_variance(90, 100, "higher_is_better") == pytest.approx(-10.0)
+
+    def test_higher_is_better_exact_target_is_zero(self):
+        assert compute_variance(100, 100, "higher_is_better") == pytest.approx(0.0)
+
+    def test_lower_is_better_beats_target_is_positive(self):
+        # result below target is favorable for a lower-is-better KPI
+        assert compute_variance(90, 100, "lower_is_better") == pytest.approx(10.0)
+
+    def test_lower_is_better_misses_target_is_negative(self):
+        assert compute_variance(115, 100, "lower_is_better") == pytest.approx(-15.0)
+
+    def test_lower_is_better_exact_target_is_zero(self):
+        assert compute_variance(100, 100, "lower_is_better") == pytest.approx(0.0)
