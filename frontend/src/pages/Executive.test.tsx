@@ -33,7 +33,7 @@ const OVERVIEW_DATA = {
     cells: Array.from({ length: 9 }, (_, periodIndex) => ({
       period: `2024-${String(periodIndex + 1).padStart(2, '0')}-01`,
       grade: 'A',
-      score: 86.4,
+      score: 70 + periodIndex + index * 10,
     })),
   })),
 }
@@ -142,5 +142,14 @@ describe('Executive', () => {
     expect(expandedHeaders.length - 1).toBe(9)
     expect(screen.getByText('2024-01')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /show recent/i })).toBeInTheDocument()
+  })
+
+  it('shows the numeric score inside each heatmap cell', () => {
+    mockedUseExecutiveOverview.mockReturnValue({ data: OVERVIEW_DATA, loading: false, error: null })
+
+    renderPage()
+
+    // last of the 6 default periods for Finance (periodIndex 8 -> score 78)
+    expect(screen.getByText('78')).toBeInTheDocument()
   })
 })

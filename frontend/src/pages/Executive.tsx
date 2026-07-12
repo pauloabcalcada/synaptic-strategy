@@ -90,11 +90,13 @@ function Heatmap({ rows }: { rows: ExecutiveOverviewHeatmapRow[] }) {
                     <td key={period} className="px-1 py-1">
                       <div
                         className={cn(
-                          "size-5 rounded-sm",
+                          "flex min-w-16 items-center justify-center rounded-md py-3 font-mono text-sm font-bold",
                           cell ? (GRADE_STYLES[cell.grade] ?? "bg-muted") : "bg-transparent"
                         )}
                         title={cell ? `${cell.period}: ${cell.grade} (${cell.score})` : "No data"}
-                      />
+                      >
+                        {cell ? cell.score : ""}
+                      </div>
                     </td>
                   );
                 })}
